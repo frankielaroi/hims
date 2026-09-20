@@ -225,6 +225,20 @@
                         </label>
                     </div>
 
+                    <details class="mt-4">
+                        <summary class="text-sm font-medium text-slate-500 cursor-pointer hover:text-slate-700">Discharged against advice, or patient deceased?</summary>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                            <label class="relative flex items-center p-4 bg-slate-50 rounded-2xl border-2 border-transparent cursor-pointer hover:bg-slate-100 transition-all has-[:checked]:bg-amber-50 has-[:checked]:border-amber-500 group">
+                                <input type="radio" name="outcome" value="dama" class="sr-only">
+                                <span class="text-sm font-semibold text-slate-900">Discharged against medical advice</span>
+                            </label>
+                            <label class="relative flex items-center p-4 bg-slate-50 rounded-2xl border-2 border-transparent cursor-pointer hover:bg-slate-100 transition-all has-[:checked]:bg-slate-200 has-[:checked]:border-slate-500 group">
+                                <input type="radio" name="outcome" value="deceased" class="sr-only">
+                                <span class="text-sm font-semibold text-slate-900">Deceased</span>
+                            </label>
+                        </div>
+                    </details>
+
                     <div class="mt-8 grid grid-cols-1 md:grid-cols-2 gap-8">
                         <div>
                             <label class="block text-sm font-semibold text-slate-700 mb-2 ml-1">Follow-up date (optional)</label>

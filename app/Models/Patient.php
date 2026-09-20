@@ -12,6 +12,7 @@ class Patient extends Model
     protected $fillable = [
         'hospital_id',
         'full_name',
+        'is_unidentified',
         'date_of_birth',
         'estimated_age',
         'is_age_estimated',
@@ -32,6 +33,7 @@ class Patient extends Model
         'date_of_birth' => 'date',
         'nhis_expiry' => 'date',
         'is_age_estimated' => 'boolean',
+        'is_unidentified' => 'boolean',
         'allergies' => 'array',
         'chronic_conditions' => 'array',
     ];
@@ -63,5 +65,13 @@ class Patient extends Model
         }
 
         return $this->estimated_age;
+    }
+
+    public static function generateHospitalId(): string
+    {
+        $year = date('Y');
+        $count = static::whereYear('created_at', $year)->count() + 1;
+
+        return "HIMS-{$year}-".str_pad($count, 5, '0', STR_PAD_LEFT);
     }
 }

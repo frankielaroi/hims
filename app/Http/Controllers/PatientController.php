@@ -77,7 +77,7 @@ class PatientController extends Controller
             'blood_group' => 'nullable|string',
         ]);
 
-        $validated['hospital_id'] = $this->generateHospitalId();
+        $validated['hospital_id'] = Patient::generateHospitalId();
         $validated['is_age_estimated'] = empty($request->date_of_birth);
 
         $patient = Patient::create($validated);
@@ -178,14 +178,6 @@ class PatientController extends Controller
         $this->logAction('clinical_data_updated', "Updated clinical safety data for: {$patient->full_name}", $patient->id);
 
         return redirect()->route('patients.show', $patient)->with('success', 'Clinical safety records updated.');
-    }
-
-    protected function generateHospitalId()
-    {
-        $year = date('Y');
-        $count = Patient::whereYear('created_at', $year)->count() + 1;
-
-        return "HIMS-{$year}-".str_pad($count, 5, '0', STR_PAD_LEFT);
     }
 
     protected function logAction(string $action, string $description, $patientId = null)

@@ -39,12 +39,12 @@ class VisitController extends Controller
         $isNhis = $validated['payment_method'] == 'nhis';
         $nhisVerified = $isNhis && $request->boolean('nhis_verified');
 
-        $queueNumber = $this->getNextQueueNumber($validated['department_id']);
+        $queueNumber = Visit::nextQueueNumber($validated['department_id']);
 
         $visit = Visit::create([
             'patient_id' => $patient->id,
             'department_id' => $validated['department_id'],
-            'visit_number' => $this->generateVisitNumber(),
+            'visit_number' => Visit::generateVisitNumber(),
             'queue_number' => $queueNumber,
             'type' => $validated['type'],
             'priority' => $validated['priority'],
@@ -73,21 +73,5 @@ class VisitController extends Controller
 
         return redirect()->route('patients.show', $patient)
             ->with('success', "Attendance registered successfully. Visit No: {$visit->visit_number} | Queue: {$visit->department->name} #{$queueNumber}");
-    }
-
-    protected function getNextQueueNumber($departmentId)
-    {
-        return Visit::where('department_id', $departmentId)
-            ->whereDate('created_at', date('Y-m-d'))
-            ->count() + 1;
-    }
-
-    protected function generateVisitNumber()
-    {
-        $prefix = 'V';
-        $date = date('Ymd');
-        $count = Visit::whereDate('created_at', date('Y-m-d'))->count() + 1;
-
-        return "{$prefix}-{$date}-".str_pad($count, 4, '0', STR_PAD_LEFT);
     }
 }

@@ -118,7 +118,7 @@ class ConsultationController extends Controller
             'prescription_items.*.duration' => 'required|integer|min:1',
             'prescription_items.*.quantity' => 'required|integer|min:1',
             'allergy_justifications' => 'nullable|array',
-            'outcome' => 'required|in:discharge,admit,refer',
+            'outcome' => 'required|in:discharge,admit,refer,dama,deceased',
             'follow_up_date' => 'nullable|date|after:today',
             'referral_destination' => 'nullable|string',
             'outcome_notes' => 'nullable|string',
@@ -210,7 +210,7 @@ class ConsultationController extends Controller
             $newStatus = match ($validated['outcome']) {
                 'discharge' => $request->has('prescription_items') ? 'waiting_pharmacy' : 'completed',
                 'admit' => 'awaiting_admission',
-                'refer' => 'completed',
+                'refer', 'dama', 'deceased' => 'completed',
             };
 
             $visit->update(['closed_at' => now()]);

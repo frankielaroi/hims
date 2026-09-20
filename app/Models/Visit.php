@@ -127,4 +127,19 @@ class Visit extends Model
             'changed_by' => auth()->id() ?? User::first()->id, // Fallback for seeds/CLI
         ]);
     }
+
+    public static function nextQueueNumber(int $departmentId): int
+    {
+        return static::where('department_id', $departmentId)
+            ->whereDate('created_at', date('Y-m-d'))
+            ->count() + 1;
+    }
+
+    public static function generateVisitNumber(): string
+    {
+        $date = date('Ymd');
+        $count = static::whereDate('created_at', date('Y-m-d'))->count() + 1;
+
+        return "V-{$date}-".str_pad($count, 4, '0', STR_PAD_LEFT);
+    }
 }

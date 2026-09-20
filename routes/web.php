@@ -10,6 +10,7 @@ use App\Http\Controllers\Auth\PasswordChangeController;
 use App\Http\Controllers\BillingController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\EmergencyController;
 use App\Http\Controllers\LabController;
 use App\Http\Controllers\NhisController;
 use App\Http\Controllers\PatientController;
@@ -47,6 +48,11 @@ Route::middleware(['auth'])->group(function () {
     // Attendance / Visits
     Route::get('patients/{patient}/visits/create', [VisitController::class, 'create'])->name('visits.create');
     Route::post('patients/{patient}/visits', [VisitController::class, 'store'])->name('visits.store');
+
+    // Emergency
+    Route::get('emergency', [EmergencyController::class, 'board'])->name('emergency.board');
+    Route::get('emergency/register', [EmergencyController::class, 'create'])->name('emergency.create');
+    Route::post('emergency/register', [EmergencyController::class, 'store'])->name('emergency.store');
 
     // Triage
     Route::get('triage', [TriageController::class, 'index'])->name('triage.index');
