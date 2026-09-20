@@ -37,6 +37,11 @@ class Invoice extends Model
         return $this->hasMany(Payment::class);
     }
 
+    public function claim()
+    {
+        return $this->hasOne(NhisClaim::class);
+    }
+
     public function balanceDue(): float
     {
         return round($this->patient_amount - $this->amount_paid, 2);

@@ -10,6 +10,7 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LabController;
+use App\Http\Controllers\NhisController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PharmacyController;
 use App\Http\Controllers\TriageController;
@@ -73,6 +74,17 @@ Route::middleware(['auth'])->group(function () {
     Route::get('billing', [BillingController::class, 'index'])->name('billing.index');
     Route::get('billing/{invoice}', [BillingController::class, 'show'])->name('billing.show');
     Route::post('billing/{invoice}/payments', [BillingController::class, 'recordPayment'])->name('billing.payments.store');
+
+    // NHIS Claims
+    Route::get('nhis', [NhisController::class, 'index'])->name('nhis.index');
+    Route::post('nhis/invoices/{invoice}/claim', [NhisController::class, 'generateClaim'])->name('nhis.claims.generate');
+    Route::get('nhis/{claim}', [NhisController::class, 'show'])->name('nhis.show');
+    Route::post('nhis/{claim}/submit', [NhisController::class, 'submit'])->name('nhis.submit');
+    Route::post('nhis/{claim}/vet', [NhisController::class, 'markVetted'])->name('nhis.vet');
+    Route::post('nhis/{claim}/pay', [NhisController::class, 'markPaid'])->name('nhis.pay');
+    Route::post('nhis/{claim}/reject', [NhisController::class, 'reject'])->name('nhis.reject');
+    Route::post('nhis/{claim}/resubmit', [NhisController::class, 'resubmit'])->name('nhis.resubmit');
+    Route::get('nhis/{claim}/export', [NhisController::class, 'export'])->name('nhis.export');
 
     // Admin Routes
     Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {

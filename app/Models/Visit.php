@@ -19,6 +19,9 @@ class Visit extends Model
         'payment_method',
         'nhis_number_snapshot',
         'nhis_expiry_snapshot',
+        'nhis_verified',
+        'nhis_verified_by',
+        'nhis_verified_at',
         'status',
         'created_by',
         'reason_for_visit',
@@ -28,6 +31,8 @@ class Visit extends Model
 
     protected $casts = [
         'nhis_expiry_snapshot' => 'date',
+        'nhis_verified' => 'boolean',
+        'nhis_verified_at' => 'datetime',
         'opened_at' => 'datetime',
         'closed_at' => 'datetime',
     ];
@@ -95,6 +100,11 @@ class Visit extends Model
     public function invoice()
     {
         return $this->hasOne(Invoice::class);
+    }
+
+    public function nhisVerifiedBy()
+    {
+        return $this->belongsTo(User::class, 'nhis_verified_by');
     }
 
     public function updateStatus(string $newStatus)

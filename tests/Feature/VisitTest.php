@@ -71,4 +71,34 @@ class VisitTest extends TestCase
         $date = date('Ymd');
         $this->assertStringStartsWith("V-{$date}-", $visit->visit_number);
     }
+
+    public function test_nhis_verification_checkbox_is_recorded_on_the_visit()
+    {
+        $this->actingAs($this->user)->post("/patients/{$this->patient->id}/visits", [
+            'department_id' => $this->dept->id,
+            'type' => 'OPD General',
+            'priority' => 'routine',
+            'payment_method' => 'nhis',
+            'nhis_verified' => '1',
+        ]);
+
+        $visit = Visit::first();
+        $this->assertTrue($visit->nhis_verified);
+        $this->assertEquals($this->user->id, $visit->nhis_verified_by);
+        $this->assertNotNull($visit->nhis_verified_at);
+    }
+
+    public function test_nhis_verification_defaults_to_false_when_not_checked()
+    {
+        $this->actingAs($this->user)->post("/patients/{$this->patient->id}/visits", [
+            'department_id' => $this->dept->id,
+            'type' => 'OPD General',
+            'priority' => 'routine',
+            'payment_method' => 'nhis',
+        ]);
+
+        $visit = Visit::first();
+        $this->assertFalse($visit->nhis_verified);
+        $this->assertNull($visit->nhis_verified_by);
+    }
 }

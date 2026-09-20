@@ -30,6 +30,7 @@ class RolesAndUsersSeeder extends Seeder
             'process_lab_orders' => 'Can collect specimens and record/verify lab results',
             'dispense_medication' => 'Can dispense prescriptions and manage pharmacy stock',
             'manage_billing' => 'Can view invoices and record patient payments',
+            'manage_nhis_claims' => 'Can generate, submit, and track NHIS claims',
         ];
 
         foreach ($permissions as $slug => $name) {
@@ -68,7 +69,7 @@ class RolesAndUsersSeeder extends Seeder
             ],
             'cashier' => [
                 'name' => 'Cashier / Billing',
-                'permissions' => ['view_patients', 'manage_billing'],
+                'permissions' => ['view_patients', 'manage_billing', 'manage_nhis_claims'],
             ],
         ];
 

@@ -33,7 +33,11 @@ class VisitController extends Controller
             'priority' => 'required|in:routine,urgent,emergency',
             'payment_method' => 'required|string',
             'reason_for_visit' => 'nullable|string',
+            'nhis_verified' => 'nullable|boolean',
         ]);
+
+        $isNhis = $validated['payment_method'] == 'nhis';
+        $nhisVerified = $isNhis && $request->boolean('nhis_verified');
 
         $queueNumber = $this->getNextQueueNumber($validated['department_id']);
 
@@ -45,8 +49,11 @@ class VisitController extends Controller
             'type' => $validated['type'],
             'priority' => $validated['priority'],
             'payment_method' => $validated['payment_method'],
-            'nhis_number_snapshot' => ($validated['payment_method'] == 'nhis') ? $patient->nhis_number : null,
-            'nhis_expiry_snapshot' => ($validated['payment_method'] == 'nhis') ? $patient->nhis_expiry : null,
+            'nhis_number_snapshot' => $isNhis ? $patient->nhis_number : null,
+            'nhis_expiry_snapshot' => $isNhis ? $patient->nhis_expiry : null,
+            'nhis_verified' => $nhisVerified,
+            'nhis_verified_by' => $nhisVerified ? auth()->id() : null,
+            'nhis_verified_at' => $nhisVerified ? now() : null,
             'created_by' => auth()->id(),
             'reason_for_visit' => $validated['reason_for_visit'] ?? null,
             'status' => 'waiting_triage',
