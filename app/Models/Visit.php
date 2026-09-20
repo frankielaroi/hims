@@ -82,6 +82,16 @@ class Visit extends Model
         return $this->hasOne(LabOrder::class)->whereNotIn('status', ['verified', 'cancelled'])->latestOfMany();
     }
 
+    public function prescriptions()
+    {
+        return $this->hasMany(Prescription::class);
+    }
+
+    public function latestPrescription()
+    {
+        return $this->hasOne(Prescription::class)->latestOfMany();
+    }
+
     public function updateStatus(string $newStatus)
     {
         $this->update(['status' => $newStatus]);

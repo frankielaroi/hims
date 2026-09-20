@@ -21,6 +21,7 @@ class DatabaseSeeder extends Seeder
             PatientsSeeder::class,
             Icd10CodesSeeder::class,
             DrugsSeeder::class,
+            DrugBatchesSeeder::class,
             LabTestsSeeder::class,
         ]);
     }

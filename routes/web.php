@@ -10,6 +10,7 @@ use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LabController;
 use App\Http\Controllers\PatientController;
+use App\Http\Controllers\PharmacyController;
 use App\Http\Controllers\TriageController;
 use App\Http\Controllers\VisitController;
 use Illuminate\Support\Facades\Route;
@@ -61,6 +62,11 @@ Route::middleware(['auth'])->group(function () {
     Route::post('lab/{labOrder}/items/{item}/collect', [LabController::class, 'collectSpecimen'])->name('lab.items.collect');
     Route::post('lab/{labOrder}/items/{item}/result', [LabController::class, 'saveResult'])->name('lab.items.result');
     Route::post('lab/{labOrder}/verify', [LabController::class, 'verify'])->name('lab.verify');
+
+    // Pharmacy
+    Route::get('pharmacy', [PharmacyController::class, 'index'])->name('pharmacy.index');
+    Route::get('pharmacy/{prescription}', [PharmacyController::class, 'show'])->name('pharmacy.show');
+    Route::post('pharmacy/{prescription}/items/{item}/dispense', [PharmacyController::class, 'dispenseItem'])->name('pharmacy.items.dispense');
 
     // Admin Routes
     Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {

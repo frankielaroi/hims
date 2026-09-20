@@ -28,6 +28,7 @@ class RolesAndUsersSeeder extends Seeder
             'merge_patients' => 'Can combine duplicate patient records',
             'order_lab_tests' => 'Can order laboratory investigations',
             'process_lab_orders' => 'Can collect specimens and record/verify lab results',
+            'dispense_medication' => 'Can dispense prescriptions and manage pharmacy stock',
         ];
 
         foreach ($permissions as $slug => $name) {
@@ -58,7 +59,7 @@ class RolesAndUsersSeeder extends Seeder
             ],
             'pharmacist' => [
                 'name' => 'Pharmacist',
-                'permissions' => ['view_patients', 'view_clinical_history'],
+                'permissions' => ['view_patients', 'view_clinical_history', 'dispense_medication'],
             ],
             'lab_tech' => [
                 'name' => 'Lab Technician',

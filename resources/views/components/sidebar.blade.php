@@ -68,10 +68,10 @@
         ],
         [
             'name' => 'Pharmacy',
-            'route' => 'dashboard',
+            'route' => 'pharmacy.index',
             'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.212 1.212 3.18 1.212 4.392 0z"></path></svg>',
-            'active' => false,
-            'roles' => ['all']
+            'active' => request()->routeIs('pharmacy.*'),
+            'roles' => ['pharmacist', 'admin']
         ],
         [
             'name' => 'Billing',
