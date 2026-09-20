@@ -92,6 +92,11 @@ class Visit extends Model
         return $this->hasOne(Prescription::class)->latestOfMany();
     }
 
+    public function invoice()
+    {
+        return $this->hasOne(Invoice::class);
+    }
+
     public function updateStatus(string $newStatus)
     {
         $this->update(['status' => $newStatus]);

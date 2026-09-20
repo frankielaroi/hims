@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\Invoice;
 use App\Models\Prescription;
 use App\Models\PrescriptionItem;
 use Illuminate\Http\Request;
@@ -46,6 +47,9 @@ class PharmacyController extends Controller
         $dispensed = $drug->deductStock($validated['quantity'], $item->id, auth()->id());
 
         $item->increment('quantity_dispensed', $dispensed);
+
+        $unitPrice = $item->nhis_covered_snapshot ? $drug->nhis_price : $drug->cash_price;
+        Invoice::addCharge($prescription->visit, $drug->name, 'Pharmacy', (float) $unitPrice, $item->nhis_covered_snapshot, $dispensed);
 
         $this->refreshPrescriptionStatus($prescription->fresh());
 

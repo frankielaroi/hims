@@ -9,11 +9,13 @@ use App\Models\Consultation;
 use App\Models\Diagnosis;
 use App\Models\Drug;
 use App\Models\Icd10Code;
+use App\Models\Invoice;
 use App\Models\LabOrder;
 use App\Models\LabOrderItem;
 use App\Models\LabTest;
 use App\Models\Prescription;
 use App\Models\PrescriptionItem;
+use App\Models\Service;
 use App\Models\Visit;
 use App\Models\VisitOutcome;
 use Illuminate\Http\Request;
@@ -130,6 +132,18 @@ class ConsultationController extends Controller
                 'status' => 'finalized',
                 'finished_at' => now(),
             ]);
+
+            // 1b. Charge the consultation fee
+            $consultationService = Service::where('code', 'CONS-GEN')->first();
+            if ($consultationService) {
+                Invoice::addCharge(
+                    $visit,
+                    $consultationService->name,
+                    'Consultation',
+                    (float) $consultationService->price,
+                    $consultationService->is_nhis_covered,
+                );
+            }
 
             // 2. Save Notes
             ClinicalNote::create([

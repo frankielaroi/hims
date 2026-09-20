@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\ServicePriceController;
 use App\Http\Controllers\Admin\StaffController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordChangeController;
+use App\Http\Controllers\BillingController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\LabController;
@@ -67,6 +68,11 @@ Route::middleware(['auth'])->group(function () {
     Route::get('pharmacy', [PharmacyController::class, 'index'])->name('pharmacy.index');
     Route::get('pharmacy/{prescription}', [PharmacyController::class, 'show'])->name('pharmacy.show');
     Route::post('pharmacy/{prescription}/items/{item}/dispense', [PharmacyController::class, 'dispenseItem'])->name('pharmacy.items.dispense');
+
+    // Billing
+    Route::get('billing', [BillingController::class, 'index'])->name('billing.index');
+    Route::get('billing/{invoice}', [BillingController::class, 'show'])->name('billing.show');
+    Route::post('billing/{invoice}/payments', [BillingController::class, 'recordPayment'])->name('billing.payments.store');
 
     // Admin Routes
     Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {

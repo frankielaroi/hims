@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
+use App\Models\Invoice;
 use App\Models\LabOrder;
 use App\Models\LabOrderItem;
 use Illuminate\Http\Request;
@@ -76,6 +77,16 @@ class LabController extends Controller
             'verified_by' => auth()->id(),
             'verified_at' => now(),
         ]);
+
+        foreach ($labOrder->items as $item) {
+            Invoice::addCharge(
+                $labOrder->visit,
+                $item->labTest->name,
+                'Lab',
+                (float) $item->labTest->price,
+                $item->labTest->is_nhis_covered,
+            );
+        }
 
         $labOrder->visit->updateStatus('waiting_doctor');
 
