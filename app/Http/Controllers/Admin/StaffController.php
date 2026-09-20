@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\AuditLog;
+use App\Models\Department;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -22,8 +23,9 @@ class StaffController extends Controller
     public function create()
     {
         $roles = Role::all();
+        $departments = Department::where('is_active', true)->orderBy('name')->get();
 
-        return view('admin.staff.create', compact('roles'));
+        return view('admin.staff.create', compact('roles', 'departments'));
     }
 
     public function store(Request $request)
@@ -36,6 +38,7 @@ class StaffController extends Controller
             'roles' => 'required|array',
             'roles.*' => 'exists:roles,id',
             'status' => 'required|in:active,suspended,disabled',
+            'department_id' => 'nullable|exists:departments,id',
             'contact_info' => 'nullable|string',
         ]);
 
@@ -45,6 +48,7 @@ class StaffController extends Controller
             'email' => $validated['email'],
             'password' => Hash::make($validated['password']),
             'status' => $validated['status'],
+            'department_id' => $validated['department_id'] ?? null,
             'contact_info' => $validated['contact_info'] ?? null,
             'requires_password_change' => true, // Force change on first login
         ]);

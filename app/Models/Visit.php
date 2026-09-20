@@ -117,6 +117,16 @@ class Visit extends Model
         return $this->hasOne(Admission::class);
     }
 
+    public function referral()
+    {
+        return $this->hasOne(Referral::class);
+    }
+
+    public function originatingReferral()
+    {
+        return $this->hasOne(Referral::class, 'new_visit_id');
+    }
+
     public function updateStatus(string $newStatus)
     {
         $this->update(['status' => $newStatus]);

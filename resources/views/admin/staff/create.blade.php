@@ -51,6 +51,17 @@
                         <option value="disabled">Disabled</option>
                     </select>
                 </div>
+
+                <div>
+                    <label class="block text-sm font-semibold text-slate-700 mb-2 ml-1">Department (optional)</label>
+                    <select name="department_id" class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-slate-900 font-medium focus:ring-2 focus:ring-blue-500">
+                        <option value="">No specific department</option>
+                        @foreach($departments as $dept)
+                            <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                        @endforeach
+                    </select>
+                    <p class="text-xs text-slate-400 mt-2">Used to route incoming referrals to the right team.</p>
+                </div>
             </div>
         </div>
 

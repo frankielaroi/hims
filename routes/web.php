@@ -15,6 +15,7 @@ use App\Http\Controllers\LabController;
 use App\Http\Controllers\NhisController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PharmacyController;
+use App\Http\Controllers\ReferralController;
 use App\Http\Controllers\TriageController;
 use App\Http\Controllers\VisitController;
 use Illuminate\Support\Facades\Route;
@@ -100,6 +101,13 @@ Route::middleware(['auth'])->group(function () {
     Route::post('admissions/{admission}/transfer', [AdmissionController::class, 'transfer'])->name('admissions.transfer');
     Route::post('admissions/{admission}/discharge', [AdmissionController::class, 'discharge'])->name('admissions.discharge');
     Route::post('beds/{bed}/mark-available', [AdmissionController::class, 'markBedAvailable'])->name('beds.mark-available');
+
+    // Referrals
+    Route::get('referrals', [ReferralController::class, 'index'])->name('referrals.index');
+    Route::post('referrals/{referral}/accept', [ReferralController::class, 'accept'])->name('referrals.accept');
+    Route::post('referrals/{referral}/decline', [ReferralController::class, 'decline'])->name('referrals.decline');
+    Route::post('referrals/{referral}/complete', [ReferralController::class, 'complete'])->name('referrals.complete');
+    Route::get('referrals/{referral}/print', [ReferralController::class, 'print'])->name('referrals.print');
 
     // Admin Routes
     Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {

@@ -60,6 +60,13 @@
             'roles' => ['nurse', 'admin']
         ],
         [
+            'name' => 'Referrals',
+            'route' => 'referrals.index',
+            'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M17 8l4 4m0 0l-4 4m4-4H3"></path></svg>',
+            'active' => request()->routeIs('referrals.*'),
+            'roles' => ['doctor', 'nurse', 'admin']
+        ],
+        [
             'name' => 'Schedule',
             'route' => 'dashboard',
             'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>',

@@ -218,11 +218,54 @@
                             <span class="text-xs text-slate-400 leading-tight">Hand over to inpatient nursing staff</span>
                         </label>
 
-                        <label class="relative flex flex-col p-6 bg-slate-50 rounded-[2rem] border-2 border-transparent cursor-pointer hover:bg-slate-100 transition-all has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 group">
-                            <input type="radio" name="outcome" value="refer" class="sr-only">
+                        <label id="referOption" class="relative flex flex-col p-6 bg-slate-50 rounded-[2rem] border-2 border-transparent cursor-pointer hover:bg-slate-100 transition-all has-[:checked]:bg-blue-50 has-[:checked]:border-blue-500 group">
+                            <input type="radio" name="outcome" value="refer" id="outcomeRefer" class="sr-only">
                             <span class="text-sm font-semibold text-slate-900 mb-1">Refer elsewhere</span>
                             <span class="text-xs text-slate-400 leading-tight">Transfer to a higher-level facility</span>
                         </label>
+                    </div>
+
+                    <div id="referralFields" class="hidden mt-6 p-6 bg-blue-50 rounded-[2rem] border border-blue-100 space-y-4">
+                        <div class="flex gap-3">
+                            <label class="flex-1 flex items-center justify-center p-3 bg-white rounded-xl border-2 border-transparent cursor-pointer has-[:checked]:border-blue-500">
+                                <input type="radio" name="referral_type" value="internal" class="mr-2">
+                                <span class="text-sm font-medium text-slate-700">Another department here</span>
+                            </label>
+                            <label class="flex-1 flex items-center justify-center p-3 bg-white rounded-xl border-2 border-transparent cursor-pointer has-[:checked]:border-blue-500">
+                                <input type="radio" name="referral_type" value="external" class="mr-2">
+                                <span class="text-sm font-medium text-slate-700">Another facility</span>
+                            </label>
+                        </div>
+
+                        <div id="referralInternalField">
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Department</label>
+                            <select name="referral_to_department_id" class="w-full px-4 py-3 bg-white border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500">
+                                <option value="">Select a department</option>
+                                @foreach($departments as $dept)
+                                    <option value="{{ $dept->id }}">{{ $dept->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        <div id="referralExternalFields" class="hidden space-y-4">
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Facility name</label>
+                                <input type="text" name="referral_external_facility_name" class="w-full px-4 py-3 bg-white border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500" placeholder="e.g. Korle-Bu Teaching Hospital">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Facility contact (optional)</label>
+                                <input type="text" name="referral_external_facility_contact" class="w-full px-4 py-3 bg-white border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500">
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Urgency</label>
+                            <select name="referral_urgency" class="w-full px-4 py-3 bg-white border-none rounded-xl text-sm font-medium focus:ring-2 focus:ring-blue-500">
+                                <option value="routine">Routine</option>
+                                <option value="urgent">Urgent</option>
+                                <option value="emergency">Emergency</option>
+                            </select>
+                        </div>
                     </div>
 
                     <details class="mt-4">
@@ -400,6 +443,26 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     addPrescriptionRow();
+
+    // Toggle referral fields when the "Refer elsewhere" outcome is chosen
+    const outcomeInputs = document.querySelectorAll('input[name="outcome"]');
+    const referralFields = document.getElementById('referralFields');
+    const referralTypeInputs = document.querySelectorAll('input[name="referral_type"]');
+    const referralInternalField = document.getElementById('referralInternalField');
+    const referralExternalFields = document.getElementById('referralExternalFields');
+
+    outcomeInputs.forEach(input => {
+        input.addEventListener('change', function () {
+            referralFields.classList.toggle('hidden', this.value !== 'refer');
+        });
+    });
+
+    referralTypeInputs.forEach(input => {
+        input.addEventListener('change', function () {
+            referralInternalField.classList.toggle('hidden', this.value !== 'internal');
+            referralExternalFields.classList.toggle('hidden', this.value !== 'external');
+        });
+    });
 });
 </script>
 @endsection

@@ -6,6 +6,7 @@ use App\Models\AllergyConflictCheck;
 use App\Models\AuditLog;
 use App\Models\ClinicalNote;
 use App\Models\Consultation;
+use App\Models\Department;
 use App\Models\Diagnosis;
 use App\Models\Drug;
 use App\Models\Icd10Code;
@@ -15,6 +16,7 @@ use App\Models\LabOrderItem;
 use App\Models\LabTest;
 use App\Models\Prescription;
 use App\Models\PrescriptionItem;
+use App\Models\Referral;
 use App\Models\Service;
 use App\Models\Visit;
 use App\Models\VisitOutcome;
@@ -51,8 +53,9 @@ class ConsultationController extends Controller
         $icd10Codes = Icd10Code::all();
         $drugs = Drug::where('is_active', true)->get();
         $labTests = LabTest::where('is_active', true)->orderBy('category')->get();
+        $departments = Department::where('is_active', true)->where('id', '!=', $visit->department_id)->orderBy('name')->get();
 
-        return view('consultations.create', compact('visit', 'pastDiagnoses', 'icd10Codes', 'drugs', 'labTests'));
+        return view('consultations.create', compact('visit', 'pastDiagnoses', 'icd10Codes', 'drugs', 'labTests', 'departments'));
     }
 
     public function orderLabs(Request $request, Visit $visit)
@@ -122,6 +125,11 @@ class ConsultationController extends Controller
             'follow_up_date' => 'nullable|date|after:today',
             'referral_destination' => 'nullable|string',
             'outcome_notes' => 'nullable|string',
+            'referral_type' => 'required_if:outcome,refer|nullable|in:internal,external',
+            'referral_to_department_id' => 'required_if:referral_type,internal|nullable|exists:departments,id',
+            'referral_external_facility_name' => 'required_if:referral_type,external|nullable|string',
+            'referral_external_facility_contact' => 'nullable|string',
+            'referral_urgency' => 'nullable|in:routine,urgent,emergency',
         ]);
 
         DB::transaction(function () use ($validated, $visit, $request) {
@@ -205,6 +213,22 @@ class ConsultationController extends Controller
                 'outcome_notes' => $validated['outcome_notes'] ?? null,
                 'doctor_id' => auth()->id(),
             ]);
+
+            // 5b. Create a structured referral record
+            if ($validated['outcome'] === 'refer') {
+                Referral::create([
+                    'visit_id' => $visit->id,
+                    'type' => $validated['referral_type'],
+                    'from_department_id' => $visit->department_id,
+                    'to_department_id' => $validated['referral_type'] === 'internal' ? $validated['referral_to_department_id'] : null,
+                    'external_facility_name' => $validated['referral_external_facility_name'] ?? null,
+                    'external_facility_contact' => $validated['referral_external_facility_contact'] ?? null,
+                    'reason' => $validated['outcome_notes'] ?? 'See clinical notes.',
+                    'urgency' => $validated['referral_urgency'] ?? 'routine',
+                    'status' => 'pending',
+                    'referred_by' => auth()->id(),
+                ]);
+            }
 
             // 6. Update Visit Status
             $newStatus = match ($validated['outcome']) {

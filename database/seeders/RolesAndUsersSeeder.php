@@ -32,6 +32,7 @@ class RolesAndUsersSeeder extends Seeder
             'manage_billing' => 'Can view invoices and record patient payments',
             'manage_nhis_claims' => 'Can generate, submit, and track NHIS claims',
             'manage_admissions' => 'Can admit, transfer, and discharge patients',
+            'manage_referrals' => 'Can accept, decline, and track patient referrals',
         ];
 
         foreach ($permissions as $slug => $name) {
@@ -50,11 +51,11 @@ class RolesAndUsersSeeder extends Seeder
             ],
             'doctor' => [
                 'name' => 'Medical Practitioner',
-                'permissions' => ['view_patients', 'view_clinical_history', 'update_clinical_safety', 'order_lab_tests'],
+                'permissions' => ['view_patients', 'view_clinical_history', 'update_clinical_safety', 'order_lab_tests', 'manage_referrals'],
             ],
             'nurse' => [
                 'name' => 'Nursing Staff',
-                'permissions' => ['view_patients', 'register_patients', 'view_clinical_history', 'update_clinical_safety', 'manage_admissions'],
+                'permissions' => ['view_patients', 'register_patients', 'view_clinical_history', 'update_clinical_safety', 'manage_admissions', 'manage_referrals'],
             ],
             'receptionist' => [
                 'name' => 'Front Desk / Reception',
