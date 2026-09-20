@@ -1,0 +1,31 @@
+# task.artifact.md
+
+- [x] Initial Research & Planning
+- [x] Database Schema Implementation
+    - [x] Create `roles` and `permissions` tables
+    - [x] Update `users` table with required fields
+    - [x] Create `audit_logs` table
+- [x] Authentication System
+    - [x] Implement Login logic (state checks, account locking)
+    - [x] Implement "Mandatory Password Change" flow
+    - [x] Implement "Single Active Session" rule
+- [x] Roles & Access Control
+    - [x] Implement RBAC system
+    - [x] Implement Dashboard routing logic
+- [x] Administrative Features
+    - [x] Create Admin CLI tool for emergency recovery
+- [x] Audit Logging System
+    - [x] Implement event listeners/logging service
+- [x] Module 2: Patient Registration & Identity Management
+    - [x] Database Schema (patients, nhis_history, identity_logs)
+    - [x] Forced Search & Registration Flow
+    - [x] Identity Disambiguation & Duplicate Checks
+    - [x] Clinical Safety Records & Identity Audit Logging
+    - [x] Admin Merge Functionality
+- [x] Verification
+    - [x] Test login flow & redirects
+    - [x] Test account locking
+    - [x] Test RBAC permissions
+    - [x] Test session termination
+    - [x] Test patient registration & identity logs
+    - [x] Test duplicate detection & merging

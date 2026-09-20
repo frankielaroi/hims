@@ -1,0 +1,1721 @@
+<!DOCTYPE html>
+<html lang="en" class="h-full bg-slate-900 text-slate-100">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Ghana Hospital Management System (GHMS) — Patient Flow & Handoff Engine</title>
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <!-- Lucide Icons -->
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <!-- Font Inter -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: { sans: ['Inter', 'sans-serif'] },
+          colors: {
+            ghana: {
+              red: '#CE1126',
+              gold: '#FCD116',
+              green: '#006B3F',
+              black: '#000000'
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: #0f172a; }
+    ::-webkit-scrollbar-thumb { background: #334155; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #475569; }
+    .pulse-glow-red { animation: pulseRed 1.5s infinite; }
+    @keyframes pulseRed {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(225, 29, 72, 0.7); }
+      50% { box-shadow: 0 0 0 10px rgba(225, 29, 72, 0); }
+    }
+    .pulse-glow-amber { animation: pulseAmber 1.5s infinite; }
+    @keyframes pulseAmber {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(217, 119, 6, 0.7); }
+      50% { box-shadow: 0 0 0 10px rgba(217, 119, 6, 0); }
+    }
+  </style>
+</head>
+<body class="h-full flex flex-col font-sans bg-slate-950 text-slate-100 overflow-hidden antialiased select-none">
+
+  <header class="bg-slate-900 border-b border-slate-800 px-4 py-2 flex items-center justify-between z-30 shrink-0">
+    <div class="flex items-center space-x-3">
+      <div class="flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-800 text-white font-bold text-xl shadow-lg border border-emerald-500/30">
+        🇬🇭
+      </div>
+      <div>
+        <div class="flex items-center space-x-2">
+          <h1 class="font-bold text-base tracking-wide text-white">GHMS Operational Engine</h1>
+          <span class="text-xs px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-medium">MoH / GHS / NHIA v2.6</span>
+        </div>
+        <p class="text-xs text-slate-400 hidden sm:block">Ghana Hospital Management System — Real-Time Patient Flow & SBAR Handoff Architecture</p>
+      </div>
+    </div>
+
+    <div class="flex items-center space-x-3">
+      <!-- Facility Context Selector -->
+      <div class="hidden md:flex items-center bg-slate-800 border border-slate-700 rounded-md px-2.5 py-1 text-xs space-x-2">
+        <i data-lucide="building-2" class="w-3.5 h-3.5 text-emerald-400"></i>
+        <select id="facilitySelector" class="bg-transparent border-none text-slate-200 font-medium focus:outline-none cursor-pointer">
+          <option value="Korle-Bu Teaching Hospital (Tertiary)">Korle-Bu Teaching Hospital (Tertiary)</option>
+          <option value="Koforidua Regional Hospital (Secondary)" selected>Koforidua Regional Hospital (Secondary)</option>
+          <option value="Ridge Hospital / GARH (Secondary)">Ridge Hospital / GARH (Secondary)</option>
+          <option value="Asesewa District Hospital (Primary)">Asesewa District Hospital (Primary)</option>
+          <option value="Ridge CHPS Compound (Sub-District)">Ridge CHPS Compound (Sub-District)</option>
+        </select>
+      </div>
+
+      <!-- Network Protocol Toggle -->
+      <button id="netToggleBtn" onclick="toggleNetworkProtocol()" class="flex items-center space-x-2 px-2.5 py-1 bg-slate-800 border border-slate-700 rounded-md text-xs hover:bg-slate-750 transition">
+        <span id="netStatusDot" class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+        <span id="netStatusText" class="font-mono text-slate-300">WebSocket LAN</span>
+      </button>
+
+      <!-- Alert & Escalation Badge Counter -->
+      <button onclick="switchTab('admin')" class="relative flex items-center space-x-1 px-3 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-xs font-medium transition">
+        <i data-lucide="bell" class="w-4 h-4 text-amber-400"></i>
+        <span class="text-slate-200">Alerts</span>
+        <span id="topEscalationBadge" class="ml-1 px-1.5 py-0.2 rounded-full bg-rose-600 text-white font-bold text-[10px]">0</span>
+      </button>
+
+      <!-- System Audio Mute Toggle -->
+      <button onclick="toggleAudio()" id="audioToggleBtn" title="Toggle Sound Chimes" class="p-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-700 rounded-md text-slate-300">
+        <i data-lucide="volume-2" id="audioIcon" class="w-4 h-4 text-emerald-400"></i>
+      </button>
+    </div>
+  </header>
+
+  <nav class="bg-slate-900/80 border-b border-slate-800 px-4 py-1.5 flex items-center space-x-1 overflow-x-auto text-xs shrink-0 no-scrollbar">
+    <button id="tab-journey" onclick="switchTab('journey')" class="tab-btn active-tab px-3 py-1.5 rounded-md font-medium flex items-center space-x-2 whitespace-nowrap transition">
+      <i data-lucide="layout-dashboard" class="w-3.5 h-3.5"></i>
+      <span>1. Journey Board</span>
+    </button>
+    <button id="tab-reception" onclick="switchTab('reception')" class="tab-btn inactive-tab px-3 py-1.5 rounded-md font-medium flex items-center space-x-2 whitespace-nowrap transition">
+      <i data-lucide="user-plus" class="w-3.5 h-3.5"></i>
+      <span>2/3. Reception & Encounters</span>
+    </button>
+    <button id="tab-triage" onclick="switchTab('triage')" class="tab-btn inactive-tab px-3 py-1.5 rounded-md font-medium flex items-center space-x-2 whitespace-nowrap transition">
+      <i data-lucide="activity" class="w-3.5 h-3.5"></i>
+      <span>4. Nurse Triage</span>
+    </button>
+    <button id="tab-doctor" onclick="switchTab('doctor')" class="tab-btn inactive-tab px-3 py-1.5 rounded-md font-medium flex items-center space-x-2 whitespace-nowrap transition">
+      <i data-lucide="stethoscope" class="w-3.5 h-3.5"></i>
+      <span>5. Doctor Consultation</span>
+    </button>
+    <button id="tab-diagnostics" onclick="switchTab('diagnostics')" class="tab-btn inactive-tab px-3 py-1.5 rounded-md font-medium flex items-center space-x-2 whitespace-nowrap transition">
+      <i data-lucide="flask-conical" class="w-3.5 h-3.5"></i>
+      <span>6/7. Lab & Radiology</span>
+    </button>
+    <button id="tab-pharmacy" onclick="switchTab('pharmacy')" class="tab-btn inactive-tab px-3 py-1.5 rounded-md font-medium flex items-center space-x-2 whitespace-nowrap transition">
+      <i data-lucide="pill" class="w-3.5 h-3.5"></i>
+      <span>8/12. Pharmacy & Inventory</span>
+    </button>
+    <button id="tab-wards" onclick="switchTab('wards')" class="tab-btn inactive-tab px-3 py-1.5 rounded-md font-medium flex items-center space-x-2 whitespace-nowrap transition">
+      <i data-lucide="bed" class="w-3.5 h-3.5"></i>
+      <span>9/14. Wards & Beds</span>
+    </button>
+    <button id="tab-billing" onclick="switchTab('billing')" class="tab-btn inactive-tab px-3 py-1.5 rounded-md font-medium flex items-center space-x-2 whitespace-nowrap transition">
+      <i data-lucide="credit-card" class="w-3.5 h-3.5"></i>
+      <span>13/14. Billing & NHIS CLAIM-it</span>
+    </button>
+    <button id="tab-stores" onclick="switchTab('stores')" class="tab-btn inactive-tab px-3 py-1.5 rounded-md font-medium flex items-center space-x-2 whitespace-nowrap transition">
+      <i data-lucide="boxes" class="w-3.5 h-3.5"></i>
+      <span>15/16. Stores & Procurement</span>
+    </button>
+    <button id="tab-admin" onclick="switchTab('admin')" class="tab-btn inactive-tab px-3 py-1.5 rounded-md font-medium flex items-center space-x-2 whitespace-nowrap transition">
+      <i data-lucide="settings" class="w-3.5 h-3.5"></i>
+      <span>20/21. Admin & Simulation</span>
+    </button>
+  </nav>
+
+  <main class="flex-1 overflow-hidden relative bg-slate-950 p-4">
+
+    <!-- Toast Notification Container -->
+    <div id="toastContainer" class="fixed top-16 right-6 z-50 flex flex-col space-y-2 pointer-events-none max-w-sm w-full"></div>
+
+    <!-- VIEW 1: JOURNEY BOARD -->
+    <section id="view-journey" class="view-panel h-full flex flex-col space-y-3">
+      <div class="flex items-center justify-between shrink-0 bg-slate-900 p-3 rounded-lg border border-slate-800">
+        <div>
+          <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+            <span>Hospital-Wide Patient Journey Board (Live Macro View)</span>
+            <span class="text-xs bg-slate-800 text-slate-300 border border-slate-700 px-2 py-0.5 rounded-full font-normal" id="journeyCountBadge">0 Active Encounters</span>
+          </h2>
+          <p class="text-xs text-slate-400">Track active patient transfers across OPD, Emergency, Triage, Clinical, Labs, Pharmacy, and Ward Admissions in real time.</p>
+        </div>
+        <div class="flex items-center space-x-2">
+          <button onclick="triggerSimulatedArrival()" class="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded text-xs font-semibold flex items-center space-x-1.5 shadow transition">
+            <i data-lucide="plus-circle" class="w-3.5 h-3.5"></i>
+            <span>Simulate Emergency Arrival</span>
+          </button>
+          <button onclick="renderJourneyBoard()" class="px-3 py-1.5 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-xs font-medium border border-slate-700 flex items-center space-x-1 transition">
+            <i data-lucide="refresh-cw" class="w-3.5 h-3.5"></i>
+            <span>Refresh</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- Kanban Multi-Stage Columns -->
+      <div id="journeyColumnsContainer" class="flex-1 grid grid-cols-1 md:grid-cols-6 gap-3 overflow-x-auto min-h-0 pb-2">
+        <!-- Columns will be populated dynamically -->
+      </div>
+    </section>
+
+    <!-- VIEW 2: RECEPTION & ENCOUNTERS -->
+    <section id="view-reception" class="view-panel hidden h-full grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-y-auto">
+      <!-- Left Panel: New Encounter Form -->
+      <div class="lg:col-span-5 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-4">
+        <div class="border-b border-slate-800 pb-2">
+          <h2 class="text-base font-bold text-slate-100 flex items-center space-x-2">
+            <i data-lucide="user-plus" class="w-5 h-5 text-emerald-400"></i>
+            <span>Patient Registration & Encounter Creation</span>
+          </h2>
+          <p class="text-xs text-slate-400">Create permanent Patient ID (GH-XXXX) or attach visit Encounter ID (ENC-2026-XXXX).</p>
+        </div>
+
+        <form id="encounterForm" onsubmit="handleNewEncounterSubmit(event)" class="space-y-3 text-xs flex-1">
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Permanent Patient ID</label>
+              <input type="text" id="regPatientId" required value="GH-2026-8891" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:border-emerald-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Ghana Card No (NIA)</label>
+              <input type="text" id="regGhanaCard" value="GHA-721908234-9" placeholder="GHA-XXXXXXXXX-X" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:border-emerald-500 focus:outline-none">
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Full Name</label>
+              <input type="text" id="regFullName" required value="Kofi Mensah" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:border-emerald-500 focus:outline-none">
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Date of Birth / Gender</label>
+              <div class="grid grid-cols-2 gap-1">
+                <input type="date" id="regDob" value="1988-04-12" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-200 focus:outline-none">
+                <select id="regGender" class="bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-200 focus:outline-none">
+                  <option value="Male">Male</option>
+                  <option value="Female">Female</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">NHIS Membership No</label>
+              <div class="flex space-x-1">
+                <input type="text" id="regNhisNo" value="NHIS-88201923" class="w-full bg-slate-950 border border-slate-700 rounded px-2 py-1.5 text-slate-200 focus:outline-none">
+                <button type="button" onclick="verifyNHISStatus()" class="px-2 py-1 bg-teal-700 hover:bg-teal-600 text-white rounded text-[11px]">Verify</button>
+              </div>
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Payment Type</label>
+              <select id="regPaymentType" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none">
+                <option value="NHIS Active (Covered)">NHIS Active (Covered)</option>
+                <option value="Cash / Out-of-Pocket">Cash / Out-of-Pocket</option>
+                <option value="Private Insurance (Glico/Acacia)">Private Insurance (Glico/Acacia)</option>
+                <option value="Co-pay Mixed">Co-pay Mixed</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="border-t border-slate-800 pt-3">
+            <label class="block text-slate-300 font-medium mb-1">Facility Entry Point & Pathway</label>
+            <select id="regEntryPoint" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none mb-2">
+              <option value="OPD Normal Queue">Entry A — Normal OPD Walk-in</option>
+              <option value="Emergency Department">Entry B — Emergency Arrival (Acute)</option>
+              <option value="CHPS Inter-Facility Referral">Entry C — Referral from CHPS Compound</option>
+              <option value="District Hospital Referral">Entry C — Referral from District Hospital</option>
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Presenting Complaint / Reason for Visit</label>
+            <textarea id="regComplaint" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded px-2.5 py-1.5 text-slate-200 focus:outline-none resize-none">High fever, rigors, body pains, severe headache for 3 days.</textarea>
+          </div>
+
+          <div class="pt-2">
+            <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs shadow-md transition flex items-center justify-center space-x-2">
+              <i data-lucide="arrow-right-circle" class="w-4 h-4"></i>
+              <span>Create Encounter & Dispatch Handoff to Triage</span>
+            </button>
+          </div>
+        </form>
+      </div>
+
+      <!-- Right Panel: Active Encounters Registry -->
+      <div class="lg:col-span-7 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+            <i data-lucide="list" class="w-4 h-4 text-emerald-400"></i>
+            <span>Active Hospital Encounters Master Log</span>
+          </h2>
+          <span class="text-xs text-slate-400 font-mono">Today: Sep 19, 2026</span>
+        </div>
+
+        <div class="flex-1 overflow-y-auto space-y-2" id="receptionMasterList">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 3: NURSE TRIAGE -->
+    <section id="view-triage" class="view-panel hidden h-full grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-y-auto">
+      <!-- Queue Panel -->
+      <div class="lg:col-span-4 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-3">
+        <div class="border-b border-slate-800 pb-2">
+          <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+            <i data-lucide="users" class="w-4 h-4 text-amber-400"></i>
+            <span>Pending Triage Queue</span>
+          </h2>
+          <p class="text-xs text-slate-400">Select patient to record vital signs and assign priority level.</p>
+        </div>
+
+        <div id="triageQueueList" class="flex-1 overflow-y-auto space-y-2">
+          <!-- Queue cards -->
+        </div>
+      </div>
+
+      <!-- Vital Signs Form Panel -->
+      <div class="lg:col-span-8 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-4">
+        <div id="triageFormContainer">
+          <p class="text-slate-400 text-xs italic">Select a patient from the left queue to conduct nurse triage.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 4: DOCTOR CONSULTATION -->
+    <section id="view-doctor" class="view-panel hidden h-full grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-y-auto">
+      <!-- Consultation Queue -->
+      <div class="lg:col-span-4 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-3">
+        <div class="border-b border-slate-800 pb-2">
+          <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+            <i data-lucide="stethoscope" class="w-4 h-4 text-blue-400"></i>
+            <span>Doctor Consultation Queue</span>
+          </h2>
+          <p class="text-xs text-slate-400">Prioritized by Triage Category (Red $\rightarrow$ Yellow $\rightarrow$ Green)</p>
+        </div>
+
+        <div id="doctorQueueList" class="flex-1 overflow-y-auto space-y-2">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Doctor Interactive Console -->
+      <div class="lg:col-span-8 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-3">
+        <div id="doctorConsoleContainer">
+          <p class="text-slate-400 text-xs italic">Select an encounter from the doctor queue to perform examination, order investigations, or assign disposition.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 5: DIAGNOSTICS (LAB & RADIOLOGY) -->
+    <section id="view-diagnostics" class="view-panel hidden h-full grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-y-auto">
+      <!-- Received Orders Queue -->
+      <div class="lg:col-span-5 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-3">
+        <div class="border-b border-slate-800 pb-2">
+          <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+            <i data-lucide="flask-conical" class="w-4 h-4 text-purple-400"></i>
+            <span>Pending Investigation Orders</span>
+          </h2>
+          <p class="text-xs text-slate-400">Laboratory and Radiology requests from clinical consultation</p>
+        </div>
+
+        <div id="labOrdersQueueList" class="flex-1 overflow-y-auto space-y-2">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Test Processing & Result Entry -->
+      <div class="lg:col-span-7 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-3">
+        <div id="labResultEntryContainer">
+          <p class="text-slate-400 text-xs italic">Select an investigation order from the left panel to record test results and dispatch verification back to clinician.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 6: PHARMACY & DISPENSING -->
+    <section id="view-pharmacy" class="view-panel hidden h-full grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-y-auto">
+      <!-- Prescription Queue -->
+      <div class="lg:col-span-5 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-3">
+        <div class="border-b border-slate-800 pb-2">
+          <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+            <i data-lucide="pill" class="w-4 h-4 text-emerald-400"></i>
+            <span>Prescription Queue</span>
+          </h2>
+          <p class="text-xs text-slate-400">Validate against NHIS formulary & drug inventory batches</p>
+        </div>
+
+        <div id="pharmacyQueueList" class="flex-1 overflow-y-auto space-y-2">
+          <!-- Queue cards -->
+        </div>
+      </div>
+
+      <!-- Dispensing Console & Inventory Balances -->
+      <div class="lg:col-span-7 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-4">
+        <div id="pharmacyConsoleContainer">
+          <p class="text-slate-400 text-xs italic">Select a prescription request from the left queue.</p>
+        </div>
+
+        <!-- Real-time Batch Stock Monitor -->
+        <div class="border-t border-slate-800 pt-3">
+          <h3 class="text-xs font-bold text-slate-200 mb-2 flex items-center justify-between">
+            <span>Live Pharmacy Inventory & Expiry Tracker</span>
+            <span class="text-[10px] text-slate-400">GhILMIS Logistics Standard</span>
+          </h3>
+          <div id="inventoryTable" class="bg-slate-950 rounded border border-slate-800 overflow-hidden text-xs">
+            <!-- Table dynamically built -->
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 7: WARDS & BED MANAGEMENT -->
+    <section id="view-wards" class="view-panel hidden h-full flex flex-col space-y-4 overflow-y-auto">
+      <div class="bg-slate-900 p-3 rounded-lg border border-slate-800 flex items-center justify-between shrink-0">
+        <div>
+          <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+            <i data-lucide="bed" class="w-4 h-4 text-indigo-400"></i>
+            <span>Inpatient Bed Management & Ward Occupancy Grid</span>
+          </h2>
+          <p class="text-xs text-slate-400">Monitor bed states: Available, Occupied, Cleaning/Turnaround, or Maintenance.</p>
+        </div>
+        <div class="flex items-center space-x-3 text-xs">
+          <span class="flex items-center space-x-1"><span class="w-3 h-3 rounded-full bg-emerald-500 inline-block"></span> <span>Available</span></span>
+          <span class="flex items-center space-x-1"><span class="w-3 h-3 rounded-full bg-rose-500 inline-block"></span> <span>Occupied</span></span>
+          <span class="flex items-center space-x-1"><span class="w-3 h-3 rounded-full bg-amber-500 inline-block"></span> <span>Turnaround</span></span>
+        </div>
+      </div>
+
+      <!-- Wards Grid Container -->
+      <div id="wardsGridContainer" class="flex-1 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 overflow-y-auto">
+        <!-- Wards rendered dynamically -->
+      </div>
+    </section>
+
+    <!-- VIEW 8: BILLING & NHIS CLAIMS (CLAIM-it) -->
+    <section id="view-billing" class="view-panel hidden h-full grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-y-auto">
+      <div class="lg:col-span-5 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-3">
+        <div class="border-b border-slate-800 pb-2">
+          <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+            <i data-lucide="receipt" class="w-4 h-4 text-amber-400"></i>
+            <span>Encounters Billing & Claims Log</span>
+          </h2>
+          <p class="text-xs text-slate-400">Differentiates Cash Out-of-Pocket vs NHIA Electronic Claim Generation</p>
+        </div>
+
+        <div id="billingEncountersList" class="flex-1 overflow-y-auto space-y-2">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <div class="lg:col-span-7 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-4">
+        <div id="billingDetailContainer">
+          <p class="text-slate-400 text-xs italic">Select an encounter to view split charge breakdown or validate NHIA CLAIM-it XML generation.</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 9: STORES & PROCUREMENT -->
+    <section id="view-stores" class="view-panel hidden h-full grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-y-auto">
+      <div class="lg:col-span-6 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-3">
+        <div class="border-b border-slate-800 pb-2">
+          <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+            <i data-lucide="boxes" class="w-4 h-4 text-teal-400"></i>
+            <span>Central Hospital Stores Inventory</span>
+          </h2>
+          <p class="text-xs text-slate-400">General medical supplies, consumables, PPE, and equipment assets.</p>
+        </div>
+        <div id="centralStoresTable" class="flex-1 overflow-y-auto">
+          <!-- Table -->
+        </div>
+      </div>
+
+      <div class="lg:col-span-6 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-3">
+        <div class="border-b border-slate-800 pb-2">
+          <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+            <i data-lucide="shopping-cart" class="w-4 h-4 text-emerald-400"></i>
+            <span>MoH / GHS Procurement Requisitions</span>
+          </h2>
+          <p class="text-xs text-slate-400">Requisition $\rightarrow$ Approval $\rightarrow$ Purchase Order $\rightarrow$ Goods Received Note (GRN)</p>
+        </div>
+        <div id="procurementLogList" class="flex-1 overflow-y-auto space-y-2">
+          <!-- Log cards -->
+        </div>
+      </div>
+    </section>
+
+    <!-- VIEW 10: ADMIN & ESCALATION CONFIGURATION -->
+    <section id="view-admin" class="view-panel hidden h-full grid grid-cols-1 lg:grid-cols-12 gap-4 overflow-y-auto">
+      <!-- System Simulation Panel -->
+      <div class="lg:col-span-4 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-4">
+        <div class="border-b border-slate-800 pb-2">
+          <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+            <i data-lucide="sliders" class="w-4 h-4 text-rose-400"></i>
+            <span>Escalation Rules & Time Limits</span>
+          </h2>
+          <p class="text-xs text-slate-400">Automated supervisor alerts when handoff thresholds are breached.</p>
+        </div>
+
+        <div class="space-y-3 text-xs">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Emergency Level Threshold</label>
+            <select id="threshEmergency" class="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-slate-200">
+              <option value="2">2 Minutes (Strict Emergency)</option>
+              <option value="5">5 Minutes</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Urgent Level Threshold</label>
+            <select id="threshUrgent" class="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-slate-200">
+              <option value="5">5 Minutes</option>
+              <option value="10" selected>10 Minutes</option>
+            </select>
+          </div>
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Routine Level Threshold</label>
+            <select id="threshRoutine" class="w-full bg-slate-950 border border-slate-700 rounded p-1.5 text-slate-200">
+              <option value="15" selected>15 Minutes</option>
+              <option value="30">30 Minutes</option>
+            </select>
+          </div>
+
+          <div class="border-t border-slate-800 pt-3 space-y-2">
+            <h3 class="font-bold text-slate-200">Simulation Controls</h3>
+            <button onclick="fastForwardTime(2)" class="w-full py-2 bg-amber-600 hover:bg-amber-500 text-white rounded font-medium text-xs flex items-center justify-center space-x-1.5">
+              <i data-lucide="fast-forward" class="w-3.5 h-3.5"></i>
+              <span>Simulate Time Advance (+2 Mins)</span>
+            </button>
+            <button onclick="triggerSimulatedArrival()" class="w-full py-2 bg-rose-600 hover:bg-rose-500 text-white rounded font-medium text-xs flex items-center justify-center space-x-1.5">
+              <i data-lucide="siren" class="w-3.5 h-3.5"></i>
+              <span>Inject Emergency Arrival</span>
+            </button>
+            <button onclick="resetSystemState()" class="w-full py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 border border-slate-700 rounded font-medium text-xs flex items-center justify-center space-x-1.5">
+              <i data-lucide="rotate-ccw" class="w-3.5 h-3.5"></i>
+              <span>Reset State to Sample Data</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-Time System Audit Log -->
+      <div class="lg:col-span-8 bg-slate-900 p-4 rounded-lg border border-slate-800 flex flex-col space-y-3">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+          <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+            <i data-lucide="shield-check" class="w-4 h-4 text-emerald-400"></i>
+            <span>Handoff Engine Audit & Escalation Log</span>
+          </h2>
+          <span class="text-xs text-slate-400 font-mono" id="auditLogCount">0 Events</span>
+        </div>
+
+        <div id="auditLogList" class="flex-1 overflow-y-auto space-y-1.5 font-mono text-xs">
+          <!-- Audit logs -->
+        </div>
+      </div>
+    </section>
+
+  </main>
+
+  <script>
+    
+    // Web Audio API Synth for Handoff Notification Chime
+    let audioEnabled = true;
+    function playChime(freq = 587.33, type = 'sine') {
+      if (!audioEnabled) return;
+      try {
+        const ctx = new (window.AudioContext || window.webkitAudioContext)();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.type = type;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        gain.gain.setValueAtTime(0.15, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.start();
+        osc.stop(ctx.currentTime + 0.4);
+      } catch (e) {
+        console.warn("Audio Context init suppressed", e);
+      }
+    }
+
+    function toggleAudio() {
+      audioEnabled = !audioEnabled;
+      const btn = document.getElementById('audioToggleBtn');
+      const icon = document.getElementById('audioIcon');
+      if (audioEnabled) {
+        btn.classList.replace('text-slate-500', 'text-slate-300');
+        icon.className = "w-4 h-4 text-emerald-400";
+      } else {
+        btn.classList.replace('text-slate-300', 'text-slate-500');
+        icon.className = "w-4 h-4 text-rose-400";
+      }
+    }
+
+    // Master System State
+    let state = {
+      networkProtocol: 'WebSocket LAN (Active)',
+      activeTab: 'journey',
+      escalationThresholds: { Emergency: 2, Urgent: 10, Routine: 15 }, // minutes
+      encounters: [],
+      inventory: [
+        { id: 'DRG-01', name: 'Paracetamol 500mg Tab', batch: 'PCM-2408', expiry: '2027-08', stock: 9820, price: 'GHS 15.00', nhisCovered: true },
+        { id: 'DRG-02', name: 'Amoxicillin 500mg Cap', batch: 'AMX-2501', expiry: '2026-11', stock: 1450, price: 'GHS 35.00', nhisCovered: true },
+        { id: 'DRG-03', name: 'Artemether + Lumefantrine (ACT)', batch: 'ACT-2409', expiry: '2027-02', stock: 420, price: 'GHS 45.00', nhisCovered: true },
+        { id: 'DRG-04', name: 'Omeprazole 20mg Cap', batch: 'OMP-2412', expiry: '2026-12', stock: 890, price: 'GHS 25.00', nhisCovered: false },
+        { id: 'DRG-05', name: 'Ceftriaxone 1g Inj', batch: 'CFT-2503', expiry: '2027-05', stock: 180, price: 'GHS 85.00', nhisCovered: true }
+      ],
+      stores: [
+        { item: 'Surgical Gloves (Box 100)', cat: 'Consumables', qty: 240, status: 'Adequate' },
+        { item: 'IV Cannula 20G', cat: 'Consumables', qty: 1100, status: 'Adequate' },
+        { item: 'Blood Giving Sets', cat: 'Consumables', qty: 45, status: 'Low Stock' },
+        { item: 'Rapid Malaria RDT Kits', cat: 'Lab Diagnostics', qty: 320, status: 'Adequate' },
+        { item: 'PPE Full Isolation Gowns', cat: 'Protective Equipment', qty: 150, status: 'Adequate' }
+      ],
+      wards: [
+        {
+          id: 'W1', name: 'Male Medical Ward', beds: [
+            { id: 'MM-01', status: 'OCCUPIED', patientId: 'GH-2026-8891', patientName: 'Kofi Mensah' },
+            { id: 'MM-02', status: 'AVAILABLE', patientId: null, patientName: null },
+            { id: 'MM-03', status: 'CLEANING', patientId: null, patientName: null },
+            { id: 'MM-04', status: 'AVAILABLE', patientId: null, patientName: null }
+          ]
+        },
+        {
+          id: 'W2', name: 'Female Surgical Ward', beds: [
+            { id: 'FS-01', status: 'AVAILABLE', patientId: null, patientName: null },
+            { id: 'FS-02', status: 'OCCUPIED', patientId: 'GH-2026-1022', patientName: 'Ama Serwaa' },
+            { id: 'FS-03', status: 'AVAILABLE', patientId: null, patientName: null }
+          ]
+        },
+        {
+          id: 'W3', name: 'Emergency Observation Ward', beds: [
+            { id: 'EO-01', status: 'OCCUPIED', patientId: 'GH-2026-5541', patientName: 'Kwame Addo' },
+            { id: 'EO-02', status: 'AVAILABLE', patientId: null, patientName: null }
+          ]
+        },
+        {
+          id: 'W4', name: 'ICU / Critical Care Unit', beds: [
+            { id: 'ICU-01', status: 'AVAILABLE', patientId: null, patientName: null },
+            { id: 'ICU-02', status: 'MAINTENANCE', patientId: null, patientName: null }
+          ]
+        }
+      ],
+      auditLogs: []
+    };
+
+    function initializeSampleEncounters() {
+      state.encounters = [
+        {
+          encounterId: 'ENC-2026-0001',
+          patientId: 'GH-2026-8891',
+          ghanaCard: 'GHA-721908234-9',
+          fullName: 'Kofi Mensah',
+          dob: '1988-04-12',
+          gender: 'Male',
+          nhisNo: 'NHIS-88201923',
+          paymentType: 'NHIS Active (Covered)',
+          entryPoint: 'OPD Normal Queue',
+          currentStage: 'Diagnostics',
+          triageCategory: 'Urgent',
+          vitals: { temp: '38.8', bp: '145/92', pulse: '104', resp: '22', spo2: '96%', bg: '6.2' },
+          complaint: 'Severe chills, fever, vomiting and joint pains for 3 days.',
+          sbar: {
+            situation: 'Patient presenting with acute febrile illness and hyperpyrexia.',
+            background: 'NHIS card active. History of mild hypertension.',
+            assessment: 'Suspected severe Plasmodium falciparum malaria or enteric fever.',
+            recommendation: 'Perform Malaria RDT, Full Blood Count (FBC), and Blood Glucose.'
+          },
+          doctorNotes: {
+            assessment: 'Acute Febrile Syndrome, suspect Malaria / Typhoid.',
+            icd10: 'B50.9 - Plasmodium falciparum malaria',
+            orders: [
+              { id: 'ORD-101', type: 'Lab', test: 'Malaria RDT', status: 'Completed', result: 'POSITIVE (++ Plasmodium falciparum)', isCritical: true },
+              { id: 'ORD-102', type: 'Lab', test: 'Full Blood Count (FBC)', status: 'Pending', result: null, isCritical: false }
+            ],
+            rx: [
+              { drug: 'Artemether + Lumefantrine (ACT)', dose: '80/480mg BD x 3 days', status: 'Prescribed' },
+              { drug: 'Paracetamol 500mg Tab', dose: '1g QDS x 3 days', status: 'Prescribed' }
+            ],
+            disposition: 'Awaiting Lab Result'
+          },
+          timestamp: new Date(Date.now() - 14 * 60000), // 14 mins ago
+          acknowledged: false,
+          escalated: false
+        },
+        {
+          encounterId: 'ENC-2026-0002',
+          patientId: 'GH-2026-1022',
+          ghanaCard: 'GHA-882190031-2',
+          fullName: 'Ama Serwaa',
+          dob: '1995-09-24',
+          gender: 'Female',
+          nhisNo: 'NHIS-99120412',
+          paymentType: 'NHIS Active (Covered)',
+          entryPoint: 'District Hospital Referral',
+          currentStage: 'Pharmacy',
+          triageCategory: 'Emergency',
+          vitals: { temp: '37.1', bp: '95/60', pulse: '118', resp: '26', spo2: '94%', bg: '5.1' },
+          complaint: 'Referred from Asesewa Hospital with severe lower abdominal pain and post-op wound discharge.',
+          sbar: {
+            situation: 'Inter-facility transfer with acute surgical complications.',
+            background: 'Post-appendectomy Day 4. Low BP, elevated pulse.',
+            assessment: 'Possible intra-abdominal sepsis / wound dehiscence.',
+            recommendation: 'Emergency IV antibiotics and STAT surgical consult.'
+          },
+          doctorNotes: {
+            assessment: 'Surgical site infection with early sepsis.',
+            icd10: 'T81.4 - Infection following a procedure',
+            orders: [
+              { id: 'ORD-201', type: 'Lab', test: 'Wound Swab C/S & FBC', status: 'Completed', result: 'Leukocytosis WBC 18.5 x10^9/L', isCritical: true }
+            ],
+            rx: [
+              { drug: 'Ceftriaxone 1g Inj', dose: '1g IV STAT', status: 'Prescribed' }
+            ],
+            disposition: 'Ward Admission'
+          },
+          timestamp: new Date(Date.now() - 3 * 60000), // 3 mins ago
+          acknowledged: true,
+          escalated: false
+        },
+        {
+          encounterId: 'ENC-2026-0003',
+          patientId: 'GH-2026-5541',
+          ghanaCard: 'GHA-102938475-0',
+          fullName: 'Kwame Addo',
+          dob: '1972-11-05',
+          gender: 'Male',
+          nhisNo: 'None (Cash Patient)',
+          paymentType: 'Cash / Out-of-Pocket',
+          entryPoint: 'Emergency Department',
+          currentStage: 'Nurse Triage',
+          triageCategory: 'Emergency',
+          vitals: { temp: '36.8', bp: '185/115', pulse: '98', resp: '20', spo2: '97%', bg: '11.4' },
+          complaint: 'Sudden onset severe chest tightness radiating to left arm, dizziness.',
+          sbar: {
+            situation: 'Acute Emergency Red Triage arrival with hypertensive crisis.',
+            background: 'Known hypertensive, non-adherent with meds.',
+            assessment: 'High risk of acute coronary syndrome or stroke.',
+            recommendation: 'Immediate resuscitation bed allocation, ECG, IV access.'
+          },
+          doctorNotes: null,
+          timestamp: new Date(Date.now() - 1 * 60000), // 1 min ago
+          acknowledged: false,
+          escalated: false
+        }
+      ];
+
+      logAudit('SYSTEM_INIT', 'System initialized with Ghanaian clinical sample dataset.');
+    }
+
+    function showToast(title, message, category = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      toast.className = `pointer-events-auto p-3 rounded-lg shadow-xl border text-xs flex flex-col space-y-1 transform transition duration-300 translate-y-2 opacity-0 ${
+        category === 'emergency' ? 'bg-rose-950 border-rose-600 text-rose-100 pulse-glow-red' :
+        category === 'escalation' ? 'bg-amber-950 border-amber-600 text-amber-100' :
+        category === 'success' ? 'bg-emerald-950 border-emerald-600 text-emerald-100' :
+        'bg-slate-900 border-slate-700 text-slate-100'
+      }`;
+
+      toast.innerHTML = `
+        <div class="flex items-center justify-between font-bold">
+          <span class="flex items-center space-x-1">
+            <i data-lucide="${category === 'emergency' ? 'siren' : category === 'escalation' ? 'alert-triangle' : 'info'}" class="w-4 h-4"></i>
+            <span>${title}</span>
+          </span>
+          <button onclick="this.parentElement.parentElement.remove()" class="text-slate-400 hover:text-white">&times;</button>
+        </div>
+        <p class="text-[11px] leading-snug">${message}</p>
+      `;
+
+      container.appendChild(toast);
+      lucide.createIcons();
+      playChime(category === 'emergency' ? 880 : 587);
+
+      setTimeout(() => {
+        toast.classList.remove('translate-y-2', 'opacity-0');
+      }, 50);
+
+      setTimeout(() => {
+        if (toast.parentElement) {
+          toast.classList.add('opacity-0', 'translate-y-2');
+          setTimeout(() => toast.remove(), 300);
+        }
+      }, 6000);
+    }
+
+    function logAudit(eventType, description) {
+      const entry = {
+        time: new Date().toLocaleTimeString(),
+        eventType,
+        description
+      };
+      state.auditLogs.unshift(entry);
+      renderAuditLogs();
+    }
+
+    function renderAuditLogs() {
+      const container = document.getElementById('auditLogList');
+      const badge = document.getElementById('auditLogCount');
+      if (!container) return;
+
+      badge.textContent = `${state.auditLogs.length} Events Logged`;
+      container.innerHTML = state.auditLogs.map(l => `
+        <div class="p-1.5 rounded bg-slate-950 border border-slate-800 flex items-start justify-between">
+          <div>
+            <span class="text-emerald-400 font-bold">[${l.time}]</span>
+            <span class="text-slate-300 font-semibold ml-2">${l.eventType}:</span>
+            <span class="text-slate-400 ml-1">${l.description}</span>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function switchTab(tabId) {
+      state.activeTab = tabId;
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('active-tab', 'bg-emerald-600', 'text-white');
+        btn.classList.add('inactive-tab', 'text-slate-400', 'hover:bg-slate-800');
+      });
+
+      const activeBtn = document.getElementById(`tab-${tabId}`);
+      if (activeBtn) {
+        activeBtn.classList.add('active-tab', 'bg-emerald-600', 'text-white');
+        activeBtn.classList.remove('inactive-tab', 'text-slate-400');
+      }
+
+      document.querySelectorAll('.view-panel').forEach(panel => panel.classList.add('hidden'));
+      const targetPanel = document.getElementById(`view-${tabId}`);
+      if (targetPanel) targetPanel.classList.remove('hidden');
+
+      // Refresh corresponding UI view
+      if (tabId === 'journey') renderJourneyBoard();
+      else if (tabId === 'reception') renderReceptionMasterList();
+      else if (tabId === 'triage') renderTriageQueue();
+      else if (tabId === 'doctor') renderDoctorQueue();
+      else if (tabId === 'diagnostics') renderLabOrdersQueue();
+      else if (tabId === 'pharmacy') { renderPharmacyQueue(); renderInventoryTable(); }
+      else if (tabId === 'wards') renderWardsGrid();
+      else if (tabId === 'billing') renderBillingList();
+      else if (tabId === 'stores') { renderStoresTable(); renderProcurementLog(); }
+      else if (tabId === 'admin') renderAuditLogs();
+
+      lucide.createIcons();
+    }
+
+    function toggleNetworkProtocol() {
+      const dot = document.getElementById('netStatusDot');
+      const txt = document.getElementById('netStatusText');
+      if (state.networkProtocol.includes('WebSocket')) {
+        state.networkProtocol = 'Polling Fallback (2s)';
+        dot.className = "w-2 h-2 rounded-full bg-amber-500 animate-ping";
+        txt.textContent = "Polling Fallback (2s)";
+        showToast("Network Switch", "Switched to HTTP Short-Polling Protocol.", "info");
+      } else {
+        state.networkProtocol = 'WebSocket LAN (Active)';
+        dot.className = "w-2 h-2 rounded-full bg-emerald-500 animate-pulse";
+        txt.textContent = "WebSocket LAN";
+        showToast("Network Switch", "Connected to Real-Time LAN WebSocket Server.", "success");
+      }
+    }
+
+    function renderJourneyBoard() {
+      const container = document.getElementById('journeyColumnsContainer');
+      const badge = document.getElementById('journeyCountBadge');
+      if (!container) return;
+
+      badge.textContent = `${state.encounters.length} Active Encounters`;
+
+      const stages = [
+        { name: 'OPD / Arrival', key: 'Reception', icon: 'user-plus' },
+        { name: 'Nurse Triage', key: 'Nurse Triage', icon: 'activity' },
+        { name: 'Doctor Consult', key: 'Doctor Consult', icon: 'stethoscope' },
+        { name: 'Diagnostics', key: 'Diagnostics', icon: 'flask-conical' },
+        { name: 'Pharmacy / Billing', key: 'Pharmacy', icon: 'pill' },
+        { name: 'Wards / Discharged', key: 'Ward Admission', icon: 'bed' }
+      ];
+
+      container.innerHTML = stages.map(stg => {
+        const stageEncounters = state.encounters.filter(e => e.currentStage === stg.key || (stg.key === 'Pharmacy' && e.currentStage === 'Billing'));
+        
+        return `
+          <div class="bg-slate-900 border border-slate-800 rounded-lg p-2 flex flex-col h-full min-w-[220px]">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-800 mb-2">
+              <span class="font-bold text-xs text-slate-200 flex items-center space-x-1.5">
+                <i data-lucide="${stg.icon}" class="w-3.5 h-3.5 text-emerald-400"></i>
+                <span>${stg.name}</span>
+              </span>
+              <span class="px-1.5 py-0.2 rounded-full bg-slate-800 border border-slate-700 text-[10px] text-slate-300 font-mono font-bold">${stageEncounters.length}</span>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-2">
+              ${stageEncounters.length === 0 ? `<div class="p-4 text-center text-slate-600 text-[11px] italic">No active encounters</div>` :
+                stageEncounters.map(enc => {
+                  const elapsedMins = Math.floor((Date.now() - new Date(enc.timestamp).getTime()) / 60000);
+                  const isEscalated = checkEscalationStatus(enc, elapsedMins);
+                  
+                  return `
+                    <div class="p-2.5 rounded border ${isEscalated ? 'bg-rose-950/40 border-rose-600 pulse-glow-red' : 'bg-slate-950 border-slate-800'} flex flex-col space-y-1.5 shadow-sm text-xs">
+                      <div class="flex items-center justify-between">
+                        <span class="font-mono font-bold text-emerald-400 text-[11px]">${enc.encounterId}</span>
+                        <span class="px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                          enc.triageCategory === 'Emergency' ? 'bg-rose-600 text-white' :
+                          enc.triageCategory === 'Urgent' ? 'bg-amber-600 text-white' : 'bg-emerald-800 text-white'
+                        }">${enc.triageCategory || 'Unassigned'}</span>
+                      </div>
+
+                      <div class="font-semibold text-slate-100">${enc.fullName}</div>
+                      <div class="text-[10px] text-slate-400 font-mono">${enc.patientId} • ${enc.paymentType.split(' ')[0]}</div>
+
+                      <div class="text-[11px] text-slate-300 line-clamp-2 bg-slate-900 p-1.5 rounded border border-slate-850">
+                        ${enc.complaint}
+                      </div>
+
+                      <div class="flex items-center justify-between pt-1 border-t border-slate-850 text-[10px]">
+                        <span class="${isEscalated ? 'text-rose-400 font-bold' : 'text-slate-400'} flex items-center space-x-1">
+                          <i data-lucide="clock" class="w-3 h-3"></i>
+                          <span>${elapsedMins}m elapsed</span>
+                        </span>
+                        <button onclick="acknowledgeHandoff('${enc.encounterId}')" class="px-2 py-0.5 ${enc.acknowledged ? 'bg-slate-800 text-slate-400' : 'bg-emerald-600 hover:bg-emerald-500 text-white'} rounded font-medium">
+                          ${enc.acknowledged ? 'Ackd' : 'Acknowledge'}
+                        </button>
+                      </div>
+                    </div>
+                  `;
+                }).join('')
+              }
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      updateTopBadges();
+      lucide.createIcons();
+    }
+
+    function checkEscalationStatus(enc, elapsedMins) {
+      const thresh = state.escalationThresholds[enc.triageCategory] || 15;
+      if (elapsedMins >= thresh && !enc.acknowledged) {
+        if (!enc.escalated) {
+          enc.escalated = true;
+          showToast("ESCALATION ALERT", `Handoff for ${enc.fullName} (${enc.encounterId}) exceeded ${thresh}m threshold at ${enc.currentStage}!`, "escalation");
+          logAudit("ESCALATION_BREACH", `Encounter ${enc.encounterId} breached ${thresh}m threshold at stage ${enc.currentStage}`);
+        }
+        return true;
+      }
+      return false;
+    }
+
+    function updateTopBadges() {
+      const totalEscalated = state.encounters.filter(e => e.escalated && !e.acknowledged).length;
+      document.getElementById('topEscalationBadge').textContent = totalEscalated;
+    }
+
+    function acknowledgeHandoff(encId) {
+      const enc = state.encounters.find(e => e.encounterId === encId);
+      if (enc) {
+        enc.acknowledged = true;
+        showToast("Handoff Acknowledged", `Clinical handoff accepted by practitioner for ${enc.fullName}.`, "success");
+        logAudit("HANDOFF_ACKNOWLEDGED", `User acknowledged SBAR handoff packet for ${encId}`);
+        renderJourneyBoard();
+      }
+    }
+
+    function handleNewEncounterSubmit(e) {
+      e.preventDefault();
+      const patientId = document.getElementById('regPatientId').value;
+      const fullName = document.getElementById('regFullName').value;
+      const ghanaCard = document.getElementById('regGhanaCard').value;
+      const dob = document.getElementById('regDob').value;
+      const gender = document.getElementById('regGender').value;
+      const nhisNo = document.getElementById('regNhisNo').value;
+      const paymentType = document.getElementById('regPaymentType').value;
+      const entryPoint = document.getElementById('regEntryPoint').value;
+      const complaint = document.getElementById('regComplaint').value;
+
+      const encId = `ENC-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const newEnc = {
+        encounterId: encId,
+        patientId,
+        ghanaCard,
+        fullName,
+        dob,
+        gender,
+        nhisNo,
+        paymentType,
+        entryPoint,
+        currentStage: entryPoint.includes('Emergency') ? 'Nurse Triage' : 'Nurse Triage',
+        triageCategory: entryPoint.includes('Emergency') ? 'Emergency' : 'Routine',
+        vitals: null,
+        complaint,
+        sbar: {
+          situation: `Patient arrived via ${entryPoint}.`,
+          background: `NHIS: ${nhisNo} (${paymentType}). Ghana Card: ${ghanaCard}`,
+          assessment: complaint,
+          recommendation: 'Perform immediate triage assessment and vital signs check.'
+        },
+        doctorNotes: null,
+        timestamp: new Date(),
+        acknowledged: false,
+        escalated: false
+      };
+
+      state.encounters.unshift(newEnc);
+      showToast("Encounter Created", `Encounter ${encId} created for ${fullName}. Dispatched to Nurse Triage.`, "success");
+      logAudit("ENCOUNTER_CREATED", `Created ${encId} (${fullName}) via ${entryPoint}`);
+
+      renderReceptionMasterList();
+      switchTab('triage');
+    }
+
+    function verifyNHISStatus() {
+      const nhisNo = document.getElementById('regNhisNo').value;
+      showToast("NHIA API Verification", `Verifying ${nhisNo} with NHIA Portal... Status: ACTIVE COVERED`, "success");
+    }
+
+    function renderReceptionMasterList() {
+      const container = document.getElementById('receptionMasterList');
+      if (!container) return;
+
+      container.innerHTML = state.encounters.map(enc => `
+        <div class="p-3 bg-slate-950 border border-slate-800 rounded flex items-center justify-between text-xs">
+          <div>
+            <div class="flex items-center space-x-2">
+              <span class="font-bold text-emerald-400 font-mono">${enc.encounterId}</span>
+              <span class="text-slate-100 font-semibold">${enc.fullName}</span>
+              <span class="text-slate-400 font-mono">(${enc.patientId})</span>
+            </div>
+            <div class="text-[11px] text-slate-400 mt-0.5">
+              ${enc.entryPoint} • ${enc.paymentType} • Stage: <span class="text-amber-400 font-medium">${enc.currentStage}</span>
+            </div>
+          </div>
+          <button onclick="switchTab('triage')" class="px-2.5 py-1 bg-slate-800 hover:bg-slate-700 text-slate-200 rounded text-[11px] border border-slate-700">
+            View Triage
+          </button>
+        </div>
+      `).join('');
+    }
+
+    function renderTriageQueue() {
+      const queueContainer = document.getElementById('triageQueueList');
+      if (!queueContainer) return;
+
+      const triageEncounters = state.encounters.filter(e => e.currentStage === 'Nurse Triage');
+
+      queueContainer.innerHTML = triageEncounters.length === 0 ? `<div class="p-4 text-center text-slate-500 text-xs">No pending patients in Triage Queue.</div>` :
+        triageEncounters.map(enc => `
+          <div onclick="selectTriagePatient('${enc.encounterId}')" class="p-3 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded cursor-pointer transition flex flex-col space-y-1 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-emerald-400 font-mono">${enc.encounterId}</span>
+              <span class="text-[10px] text-slate-400">${new Date(enc.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}</span>
+            </div>
+            <div class="font-semibold text-slate-100">${enc.fullName}</div>
+            <div class="text-[11px] text-slate-400">${enc.complaint}</div>
+          </div>
+        `).join('');
+    }
+
+    function selectTriagePatient(encId) {
+      const enc = state.encounters.find(e => e.encounterId === encId);
+      if (!enc) return;
+
+      const formContainer = document.getElementById('triageFormContainer');
+      formContainer.innerHTML = `
+        <div class="border-b border-slate-800 pb-2 flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+              <span>Nurse Triage Assessment — ${enc.fullName}</span>
+              <span class="font-mono text-xs text-emerald-400">(${enc.patientId})</span>
+            </h2>
+            <p class="text-xs text-slate-400">${enc.entryPoint} • ${enc.paymentType}</p>
+          </div>
+          <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-800 border border-slate-700 text-amber-400">${enc.encounterId}</span>
+        </div>
+
+        <form onsubmit="handleTriageSubmit(event, '${enc.encounterId}')" class="space-y-4 text-xs mt-3">
+          <!-- Vitals Input Grid -->
+          <div class="grid grid-cols-3 md:grid-cols-6 gap-2">
+            <div class="bg-slate-950 p-2 rounded border border-slate-800">
+              <label class="block text-slate-400 text-[10px] font-medium">Temp (°C)</label>
+              <input type="text" id="vitTemp" required value="${enc.vitals ? enc.vitals.temp : '38.5'}" class="w-full bg-transparent font-bold text-slate-100 text-sm focus:outline-none">
+            </div>
+            <div class="bg-slate-950 p-2 rounded border border-slate-800">
+              <label class="block text-slate-400 text-[10px] font-medium">BP (mmHg)</label>
+              <input type="text" id="vitBp" required value="${enc.vitals ? enc.vitals.bp : '138/88'}" class="w-full bg-transparent font-bold text-slate-100 text-sm focus:outline-none">
+            </div>
+            <div class="bg-slate-950 p-2 rounded border border-slate-800">
+              <label class="block text-slate-400 text-[10px] font-medium">Pulse (bpm)</label>
+              <input type="text" id="vitPulse" required value="${enc.vitals ? enc.vitals.pulse : '102'}" class="w-full bg-transparent font-bold text-slate-100 text-sm focus:outline-none">
+            </div>
+            <div class="bg-slate-950 p-2 rounded border border-slate-800">
+              <label class="block text-slate-400 text-[10px] font-medium">Resp Rate</label>
+              <input type="text" id="vitResp" required value="${enc.vitals ? enc.vitals.resp : '20'}" class="w-full bg-transparent font-bold text-slate-100 text-sm focus:outline-none">
+            </div>
+            <div class="bg-slate-950 p-2 rounded border border-slate-800">
+              <label class="block text-slate-400 text-[10px] font-medium">SpO2 (%)</label>
+              <input type="text" id="vitSpo2" required value="${enc.vitals ? enc.vitals.spo2 : '97%'}" class="w-full bg-transparent font-bold text-slate-100 text-sm focus:outline-none">
+            </div>
+            <div class="bg-slate-950 p-2 rounded border border-slate-800">
+              <label class="block text-slate-400 text-[10px] font-medium">Blood Glucose</label>
+              <input type="text" id="vitBg" value="${enc.vitals ? enc.vitals.bg : '6.0'}" class="w-full bg-transparent font-bold text-slate-100 text-sm focus:outline-none">
+            </div>
+          </div>
+
+          <!-- Triage Priority Selection -->
+          <div class="bg-slate-950 p-3 rounded border border-slate-800">
+            <label class="block text-slate-300 font-bold mb-2">Triage Category Allocation</label>
+            <div class="grid grid-cols-3 gap-3">
+              <label class="flex items-center space-x-2 p-2 rounded bg-rose-950/40 border border-rose-800 cursor-pointer">
+                <input type="radio" name="triageCategory" value="Emergency" ${enc.triageCategory === 'Emergency' ? 'checked' : ''} class="text-rose-600 focus:ring-0">
+                <div>
+                  <div class="font-bold text-rose-400">Emergency (Red)</div>
+                  <div class="text-[10px] text-slate-400">Immediate Resuscitation</div>
+                </div>
+              </label>
+              <label class="flex items-center space-x-2 p-2 rounded bg-amber-950/40 border border-amber-800 cursor-pointer">
+                <input type="radio" name="triageCategory" value="Urgent" ${enc.triageCategory === 'Urgent' ? 'checked' : ''} class="text-amber-600 focus:ring-0">
+                <div>
+                  <div class="font-bold text-amber-400">Urgent (Yellow)</div>
+                  <div class="text-[10px] text-slate-400">Priority Queue (< 10 mins)</div>
+                </div>
+              </label>
+              <label class="flex items-center space-x-2 p-2 rounded bg-emerald-950/40 border border-emerald-800 cursor-pointer">
+                <input type="radio" name="triageCategory" value="Routine" ${enc.triageCategory === 'Routine' ? 'checked' : ''} class="text-emerald-400 focus:ring-0">
+                <div>
+                  <div class="font-bold text-emerald-400">Routine (Green)</div>
+                  <div class="text-[10px] text-slate-400">Standard OPD Consultation</div>
+                </div>
+              </label>
+            </div>
+          </div>
+
+          <!-- Nurse Clinical SBAR Assessment -->
+          <div class="space-y-2">
+            <label class="block text-slate-300 font-bold">Nurse SBAR Assessment Note</label>
+            <textarea id="nurseSbarAssessment" rows="2" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200 resize-none">Vitals recorded. Patient exhibits high fever and tachycardia. Immediate medical officer consult requested.</textarea>
+          </div>
+
+          <button type="submit" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs shadow transition flex items-center justify-center space-x-2">
+            <i data-lucide="send" class="w-4 h-4"></i>
+            <span>Dispatch Nurse $\rightarrow$ Doctor Handoff Packet</span>
+          </button>
+        </form>
+      `;
+      lucide.createIcons();
+    }
+
+    function handleTriageSubmit(e, encId) {
+      e.preventDefault();
+      const enc = state.encounters.find(e => e.encounterId === encId);
+      if (!enc) return;
+
+      const vitals = {
+        temp: document.getElementById('vitTemp').value,
+        bp: document.getElementById('vitBp').value,
+        pulse: document.getElementById('vitPulse').value,
+        resp: document.getElementById('vitResp').value,
+        spo2: document.getElementById('vitSpo2').value,
+        bg: document.getElementById('vitBg').value
+      };
+
+      const selectedCat = document.querySelector('input[name="triageCategory"]:checked').value;
+      const sbarNote = document.getElementById('nurseSbarAssessment').value;
+
+      enc.vitals = vitals;
+      enc.triageCategory = selectedCat;
+      enc.currentStage = 'Doctor Consult';
+      enc.timestamp = new Date(); // reset timestamp for doctor queue threshold
+      enc.acknowledged = false;
+
+      enc.sbar.assessment = `Vitals: Temp ${vitals.temp}°C, BP ${vitals.bp}, Pulse ${vitals.pulse}. Nurse Note: ${sbarNote}`;
+
+      showToast("Triage Dispatched", `Patient ${enc.fullName} triaged as ${selectedCat}. Dispatched to Doctor Queue.`, "success");
+      logAudit("TRIAGE_COMPLETED", `Triaged ${enc.encounterId} as ${selectedCat}`);
+
+      renderTriageQueue();
+      switchTab('doctor');
+    }
+
+    function renderDoctorQueue() {
+      const container = document.getElementById('doctorQueueList');
+      if (!container) return;
+
+      const docEncounters = state.encounters.filter(e => e.currentStage === 'Doctor Consult');
+
+      container.innerHTML = docEncounters.length === 0 ? `<div class="p-4 text-center text-slate-500 text-xs">No pending patients in Doctor Queue.</div>` :
+        docEncounters.map(enc => `
+          <div onclick="selectDoctorPatient('${enc.encounterId}')" class="p-3 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded cursor-pointer transition flex flex-col space-y-1.5 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-emerald-400 font-mono">${enc.encounterId}</span>
+              <span class="px-1.5 py-0.2 rounded text-[9px] font-bold ${
+                enc.triageCategory === 'Emergency' ? 'bg-rose-600 text-white' :
+                enc.triageCategory === 'Urgent' ? 'bg-amber-600 text-white' : 'bg-emerald-800 text-white'
+              }">${enc.triageCategory}</span>
+            </div>
+
+            <div class="font-semibold text-slate-100">${enc.fullName}</div>
+
+            <!-- Vitals Summary Badge -->
+            ${enc.vitals ? `
+              <div class="grid grid-cols-3 gap-1 bg-slate-900 p-1.5 rounded text-[10px] font-mono text-slate-300">
+                <span>T: <b class="${parseFloat(enc.vitals.temp) > 38 ? 'text-rose-400' : ''}">${enc.vitals.temp}°C</b></span>
+                <span>BP: <b>${enc.vitals.bp}</b></span>
+                <span>P: <b>${enc.vitals.pulse}</b></span>
+              </div>
+            ` : ''}
+          </div>
+        `).join('');
+    }
+
+    function selectDoctorPatient(encId) {
+      const enc = state.encounters.find(e => e.encounterId === encId);
+      if (!enc) return;
+
+      const container = document.getElementById('doctorConsoleContainer');
+      container.innerHTML = `
+        <div class="border-b border-slate-800 pb-2 flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-slate-100 flex items-center space-x-2">
+              <span>Doctor Clinical Consultation — ${enc.fullName}</span>
+            </h2>
+            <p class="text-xs text-slate-400">Patient ID: ${enc.patientId} • NHIS: ${enc.nhisNo}</p>
+          </div>
+          <span class="px-2 py-0.5 rounded text-xs font-bold bg-emerald-950 text-emerald-400 border border-emerald-800">${enc.encounterId}</span>
+        </div>
+
+        <!-- Incoming SBAR Packet Display -->
+        <div class="bg-slate-950 p-3 rounded border border-slate-800 space-y-1 text-xs">
+          <div class="font-bold text-amber-400 flex items-center space-x-1">
+            <i data-lucide="file-text" class="w-3.5 h-3.5"></i>
+            <span>Nurse SBAR Handoff Received</span>
+          </div>
+          <p class="text-slate-300"><b>Situation:</b> ${enc.sbar.situation}</p>
+          <p class="text-slate-300"><b>Assessment:</b> ${enc.sbar.assessment}</p>
+        </div>
+
+        <!-- Consultation Form -->
+        <form onsubmit="handleDoctorSubmit(event, '${enc.encounterId}')" class="space-y-3 text-xs mt-3">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Clinical Assessment & ICD-10 Diagnosis</label>
+            <input type="text" id="docIcd10" required value="B50.9 - Severe Plasmodium falciparum malaria" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200 focus:outline-none">
+          </div>
+
+          <div class="grid grid-cols-2 gap-3">
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Investigation Orders (Lab / Imaging)</label>
+              <select id="docLabOrder" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200">
+                <option value="Malaria RDT + FBC">Malaria RDT + Full Blood Count (FBC)</option>
+                <option value="Chest X-Ray">Chest X-Ray (Radiology)</option>
+                <option value="Wound Swab C/S">Wound Swab Culture & Sensitivity</option>
+                <option value="None">None (Direct Treatment)</option>
+              </select>
+            </div>
+            <div>
+              <label class="block text-slate-300 font-medium mb-1">Prescription Medication</label>
+              <select id="docRxOrder" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200">
+                <option value="Artemether + Lumefantrine (ACT) & Paracetamol">Artemether + Lumefantrine (ACT) & Paracetamol</option>
+                <option value="Ceftriaxone 1g Inj STAT">Ceftriaxone 1g Inj STAT</option>
+                <option value="Amoxicillin 500mg Cap TID">Amoxicillin 500mg Cap TID</option>
+              </select>
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Disposition Path</label>
+            <select id="docDisposition" class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200 font-bold text-amber-400">
+              <option value="Order Lab & Await Result">Order Lab Investigation (Send to Lab Module)</option>
+              <option value="Send to Pharmacy / Billing">Prescribe & Send to Pharmacy / Billing</option>
+              <option value="Inpatient Ward Admission">Admit to Inpatient Ward (Bed Allocation)</option>
+              <option value="External Hospital Referral">Refer to Tertiary Hospital (Korle-Bu / GARH)</option>
+            </select>
+          </div>
+
+          <button type="submit" class="w-full py-2.5 bg-blue-600 hover:bg-blue-500 text-white rounded font-bold text-xs shadow transition flex items-center justify-center space-x-2">
+            <i data-lucide="check-circle" class="w-4 h-4"></i>
+            <span>Submit Doctor Clinical Decision & Dispatch Transfer</span>
+          </button>
+        </form>
+      `;
+      lucide.createIcons();
+    }
+
+    function handleDoctorSubmit(e, encId) {
+      e.preventDefault();
+      const enc = state.encounters.find(e => e.encounterId === encId);
+      if (!enc) return;
+
+      const icd10 = document.getElementById('docIcd10').value;
+      const labOrder = document.getElementById('docLabOrder').value;
+      const rxOrder = document.getElementById('docRxOrder').value;
+      const disposition = document.getElementById('docDisposition').value;
+
+      enc.doctorNotes = {
+        assessment: icd10,
+        icd10,
+        orders: labOrder !== 'None' ? [{ id: `ORD-${Math.floor(100+Math.random()*900)}`, type: 'Lab', test: labOrder, status: 'Pending', result: null }] : [],
+        rx: [{ drug: rxOrder, dose: 'Standard', status: 'Prescribed' }],
+        disposition
+      };
+
+      if (disposition.includes('Lab')) {
+        enc.currentStage = 'Diagnostics';
+      } else if (disposition.includes('Pharmacy')) {
+        enc.currentStage = 'Pharmacy';
+      } else if (disposition.includes('Ward')) {
+        enc.currentStage = 'Ward Admission';
+      }
+
+      enc.timestamp = new Date();
+      enc.acknowledged = false;
+
+      showToast("Doctor Decision Dispatched", `Encounter ${encId} updated. Transitioned to ${enc.currentStage}.`, "success");
+      logAudit("DOCTOR_CONSULT_DONE", `Completed consult for ${encId}. Disposition: ${disposition}`);
+
+      renderDoctorQueue();
+      switchTab('journey');
+    }
+
+    function renderLabOrdersQueue() {
+      const container = document.getElementById('labOrdersQueueList');
+      if (!container) return;
+
+      const labEncounters = state.encounters.filter(e => e.currentStage === 'Diagnostics');
+
+      container.innerHTML = labEncounters.length === 0 ? `<div class="p-4 text-center text-slate-500 text-xs">No pending laboratory/radiology investigation orders.</div>` :
+        labEncounters.map(enc => `
+          <div onclick="selectLabOrder('${enc.encounterId}')" class="p-3 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded cursor-pointer transition flex flex-col space-y-1 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-purple-400 font-mono">${enc.encounterId}</span>
+              <span class="text-[10px] text-slate-400">${enc.fullName}</span>
+            </div>
+            <div class="font-semibold text-slate-200">
+              Orders: ${enc.doctorNotes && enc.doctorNotes.orders.length > 0 ? enc.doctorNotes.orders.map(o => o.test).join(', ') : 'Malaria RDT + FBC'}
+            </div>
+          </div>
+        `).join('');
+    }
+
+    function selectLabOrder(encId) {
+      const enc = state.encounters.find(e => e.encounterId === encId);
+      if (!enc) return;
+
+      const container = document.getElementById('labResultEntryContainer');
+      container.innerHTML = `
+        <div class="border-b border-slate-800 pb-2">
+          <h2 class="text-sm font-bold text-slate-100">Laboratory & Diagnostic Processing — ${enc.fullName}</h2>
+          <p class="text-xs text-slate-400">Encounter ID: ${enc.encounterId}</p>
+        </div>
+
+        <form onsubmit="handleLabSubmit(event, '${enc.encounterId}')" class="space-y-3 text-xs mt-3">
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Lab Test Ordered</label>
+            <input type="text" readonly value="${enc.doctorNotes && enc.doctorNotes.orders.length > 0 ? enc.doctorNotes.orders[0].test : 'Malaria RDT'}" class="w-full bg-slate-950 border border-slate-800 rounded p-2 text-slate-300">
+          </div>
+
+          <div>
+            <label class="block text-slate-300 font-medium mb-1">Enter Laboratory Result Findings</label>
+            <textarea id="labResultText" rows="3" required class="w-full bg-slate-950 border border-slate-700 rounded p-2 text-slate-200 resize-none">POSITIVE (++ Plasmodium falciparum asexual forms identified). Hemoglobin: 10.2 g/dL.</textarea>
+          </div>
+
+          <div class="flex items-center space-x-2">
+            <input type="checkbox" id="labCriticalFlag" class="rounded text-rose-600 focus:ring-0">
+            <label for="labCriticalFlag" class="text-rose-400 font-bold">Flag as CRITICAL RESULT (Immediate Doctor Alert)</label>
+          </div>
+
+          <button type="submit" class="w-full py-2.5 bg-purple-600 hover:bg-purple-500 text-white rounded font-bold text-xs shadow transition flex items-center justify-center space-x-2">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Verify & Push Result to Doctor Console</span>
+          </button>
+        </form>
+      `;
+      lucide.createIcons();
+    }
+
+    function handleLabSubmit(e, encId) {
+      e.preventDefault();
+      const enc = state.encounters.find(e => e.encounterId === encId);
+      if (!enc) return;
+
+      const resultText = document.getElementById('labResultText').value;
+      const isCritical = document.getElementById('labCriticalFlag').checked;
+
+      if (enc.doctorNotes && enc.doctorNotes.orders.length > 0) {
+        enc.doctorNotes.orders[0].status = 'Completed';
+        enc.doctorNotes.orders[0].result = resultText;
+        enc.doctorNotes.orders[0].isCritical = isCritical;
+      }
+
+      enc.currentStage = 'Pharmacy'; // Auto progress to pharmacy/billing
+      enc.timestamp = new Date();
+      enc.acknowledged = false;
+
+      showToast("Lab Result Verified", `Result dispatched for ${enc.fullName}. Progressed to Pharmacy.`, "success");
+      logAudit("LAB_RESULT_VERIFIED", `Dispatched lab results for ${encId}. Critical: ${isCritical}`);
+
+      renderLabOrdersQueue();
+      switchTab('pharmacy');
+    }
+
+    function renderPharmacyQueue() {
+      const container = document.getElementById('pharmacyQueueList');
+      if (!container) return;
+
+      const rxEncounters = state.encounters.filter(e => e.currentStage === 'Pharmacy' || e.currentStage === 'Billing');
+
+      container.innerHTML = rxEncounters.length === 0 ? `<div class="p-4 text-center text-slate-500 text-xs">No pending prescriptions in Pharmacy Queue.</div>` :
+        rxEncounters.map(enc => `
+          <div onclick="selectPharmacyPatient('${enc.encounterId}')" class="p-3 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded cursor-pointer transition flex flex-col space-y-1 text-xs">
+            <div class="flex items-center justify-between">
+              <span class="font-bold text-emerald-400 font-mono">${enc.encounterId}</span>
+              <span class="text-[10px] text-slate-400">${enc.paymentType.split(' ')[0]}</span>
+            </div>
+            <div class="font-semibold text-slate-100">${enc.fullName}</div>
+          </div>
+        `).join('');
+    }
+
+    function selectPharmacyPatient(encId) {
+      const enc = state.encounters.find(e => e.encounterId === encId);
+      if (!enc) return;
+
+      const container = document.getElementById('pharmacyConsoleContainer');
+      container.innerHTML = `
+        <div class="border-b border-slate-800 pb-2 flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-slate-100">Pharmacy Dispensing — ${enc.fullName}</h2>
+            <p class="text-xs text-slate-400">Payment Plan: ${enc.paymentType}</p>
+          </div>
+          <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-800 text-emerald-400 border border-slate-700">${enc.encounterId}</span>
+        </div>
+
+        <div class="bg-slate-950 p-3 rounded border border-slate-800 space-y-2 text-xs mt-3">
+          <div class="font-bold text-slate-200">Prescribed Items:</div>
+          <div class="p-2 bg-slate-900 rounded border border-slate-850 space-y-1">
+            <div class="flex justify-between font-mono text-emerald-400 font-bold">
+              <span>Artemether + Lumefantrine (ACT) 80/480mg</span>
+              <span>NHIS COVERED</span>
+            </div>
+            <div class="text-[11px] text-slate-400">Sig: 1 tab BD for 3 days • Batch: ACT-2409 (Exp: 2027-02)</div>
+          </div>
+        </div>
+
+        <button onclick="dispenseMedication('${enc.encounterId}')" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs shadow transition flex items-center justify-center space-x-2 mt-3">
+          <i data-lucide="check-circle-2" class="w-4 h-4"></i>
+          <span>Dispense Medication & Deduct GhILMIS Stock</span>
+        </button>
+      `;
+      lucide.createIcons();
+    }
+
+    function dispenseMedication(encId) {
+      const enc = state.encounters.find(e => e.encounterId === encId);
+      if (enc) {
+        // deduct stock
+        state.inventory[2].stock -= 24;
+        enc.currentStage = 'Billing';
+        showToast("Dispensed", `Medication dispensed for ${enc.fullName}. Stock updated.`, "success");
+        logAudit("PHARMACY_DISPENSED", `Dispensed ACT 80/480mg for ${encId}`);
+        renderInventoryTable();
+        switchTab('billing');
+      }
+    }
+
+    function renderInventoryTable() {
+      const container = document.getElementById('inventoryTable');
+      if (!container) return;
+
+      container.innerHTML = `
+        <table class="w-full text-left">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="p-2">Item Name</th>
+              <th class="p-2">Batch</th>
+              <th class="p-2">Expiry</th>
+              <th class="p-2">Stock Balance</th>
+              <th class="p-2">NHIS Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${state.inventory.map(item => `
+              <tr class="border-b border-slate-850 hover:bg-slate-900/50">
+                <td class="p-2 font-medium text-slate-200">${item.name}</td>
+                <td class="p-2 font-mono text-slate-400">${item.batch}</td>
+                <td class="p-2 font-mono text-slate-400">${item.expiry}</td>
+                <td class="p-2 font-bold ${item.stock < 500 ? 'text-amber-400' : 'text-emerald-400'}">${item.stock}</td>
+                <td class="p-2"><span class="px-1.5 py-0.2 rounded text-[10px] ${item.nhisCovered ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-slate-800 text-slate-400'}">${item.nhisCovered ? 'Covered' : 'Co-Pay'}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderWardsGrid() {
+      const container = document.getElementById('wardsGridContainer');
+      if (!container) return;
+
+      container.innerHTML = state.wards.map(w => `
+        <div class="bg-slate-900 border border-slate-800 rounded-lg p-3 flex flex-col space-y-3">
+          <div class="flex items-center justify-between border-b border-slate-800 pb-2">
+            <h3 class="font-bold text-xs text-slate-200 flex items-center space-x-1.5">
+              <i data-lucide="building" class="w-3.5 h-3.5 text-indigo-400"></i>
+              <span>${w.name}</span>
+            </h3>
+            <span class="text-[10px] font-mono text-slate-400">${w.beds.length} Beds</span>
+          </div>
+
+          <div class="grid grid-cols-2 gap-2 flex-1">
+            ${w.beds.map(b => `
+              <div class="p-2 rounded border flex flex-col justify-between space-y-1 text-xs ${
+                b.status === 'OCCUPIED' ? 'bg-rose-950/40 border-rose-800' :
+                b.status === 'CLEANING' ? 'bg-amber-950/40 border-amber-800' :
+                b.status === 'MAINTENANCE' ? 'bg-slate-800 border-slate-700' :
+                'bg-emerald-950/40 border-emerald-800'
+              }">
+                <div class="flex items-center justify-between font-mono font-bold">
+                  <span class="text-slate-300">${b.id}</span>
+                  <span class="text-[9px] px-1 rounded ${
+                    b.status === 'OCCUPIED' ? 'bg-rose-600 text-white' :
+                    b.status === 'CLEANING' ? 'bg-amber-600 text-white' :
+                    b.status === 'MAINTENANCE' ? 'bg-slate-600 text-white' :
+                    'bg-emerald-600 text-white'
+                  }">${b.status}</span>
+                </div>
+
+                <div class="text-[11px] text-slate-200 font-medium truncate">
+                  ${b.patientName || 'Vacant Bed'}
+                </div>
+
+                ${b.status === 'OCCUPIED' ? `
+                  <button onclick="dischargeBed('${w.id}', '${b.id}')" class="w-full py-0.5 bg-rose-800 hover:bg-rose-700 text-white rounded text-[10px] font-medium transition">
+                    Discharge
+                  </button>
+                ` : b.status === 'CLEANING' ? `
+                  <button onclick="cleanBed('${w.id}', '${b.id}')" class="w-full py-0.5 bg-amber-800 hover:bg-amber-700 text-white rounded text-[10px] font-medium transition">
+                    Mark Available
+                  </button>
+                ` : ''}
+              </div>
+            `).join('')}
+          </div>
+        </div>
+      `).join('');
+
+      lucide.createIcons();
+    }
+
+    function dischargeBed(wardId, bedId) {
+      const ward = state.wards.find(w => w.id === wardId);
+      if (ward) {
+        const bed = ward.beds.find(b => b.id === bedId);
+        if (bed) {
+          bed.status = 'CLEANING';
+          bed.patientId = null;
+          bed.patientName = null;
+          showToast("Bed Discharge", `Bed ${bedId} discharged and moved to Turnaround / Cleaning state.`, "info");
+          logAudit("BED_DISCHARGED", `Bed ${bedId} in ward ${wardId} set to CLEANING`);
+          renderWardsGrid();
+        }
+      }
+    }
+
+    function cleanBed(wardId, bedId) {
+      const ward = state.wards.find(w => w.id === wardId);
+      if (ward) {
+        const bed = ward.beds.find(b => b.id === bedId);
+        if (bed) {
+          bed.status = 'AVAILABLE';
+          showToast("Bed Ready", `Bed ${bedId} cleaned and ready for admission.`, "success");
+          renderWardsGrid();
+        }
+      }
+    }
+
+    function renderBillingList() {
+      const container = document.getElementById('billingEncountersList');
+      if (!container) return;
+
+      container.innerHTML = state.encounters.map(enc => `
+        <div onclick="selectBillingEncounter('${enc.encounterId}')" class="p-3 bg-slate-950 hover:bg-slate-850 border border-slate-800 rounded cursor-pointer transition flex flex-col space-y-1 text-xs">
+          <div class="flex items-center justify-between">
+            <span class="font-bold text-amber-400 font-mono">${enc.encounterId}</span>
+            <span class="text-[10px] text-slate-400">${enc.paymentType.split(' ')[0]}</span>
+          </div>
+          <div class="font-semibold text-slate-100">${enc.fullName}</div>
+        </div>
+      `).join('');
+    }
+
+    function selectBillingEncounter(encId) {
+      const enc = state.encounters.find(e => e.encounterId === encId);
+      if (!enc) return;
+
+      const container = document.getElementById('billingDetailContainer');
+      container.innerHTML = `
+        <div class="border-b border-slate-800 pb-2 flex items-center justify-between">
+          <div>
+            <h2 class="text-sm font-bold text-slate-100">NHIA CLAIM-it Claims & Billing Engine</h2>
+            <p class="text-xs text-slate-400">Encounter: ${enc.encounterId} • ${enc.fullName}</p>
+          </div>
+          <span class="px-2 py-0.5 rounded text-xs font-bold bg-slate-800 text-amber-400 border border-slate-700">${enc.paymentType}</span>
+        </div>
+
+        <div class="bg-slate-950 p-3 rounded border border-slate-800 space-y-2 text-xs mt-3">
+          <div class="font-bold text-slate-200">Invoice Items Breakdown:</div>
+          <div class="space-y-1">
+            <div class="flex justify-between p-1.5 bg-slate-900 rounded">
+              <span>OPD Consultation Fee</span>
+              <span class="font-mono font-bold text-emerald-400">GHS 45.00 (NHIS)</span>
+            </div>
+            <div class="flex justify-between p-1.5 bg-slate-900 rounded">
+              <span>Malaria RDT Diagnostic Test</span>
+              <span class="font-mono font-bold text-emerald-400">GHS 25.00 (NHIS)</span>
+            </div>
+            <div class="flex justify-between p-1.5 bg-slate-900 rounded">
+              <span>Artemether + Lumefantrine (ACT)</span>
+              <span class="font-mono font-bold text-emerald-400">GHS 45.00 (NHIS)</span>
+            </div>
+          </div>
+          <div class="border-t border-slate-800 pt-2 flex justify-between font-bold text-slate-100">
+            <span>Total Claimable to NHIA:</span>
+            <span class="font-mono text-emerald-400">GHS 115.00</span>
+          </div>
+        </div>
+
+        <button onclick="generateClaimXml('${enc.encounterId}')" class="w-full py-2.5 bg-amber-600 hover:bg-amber-500 text-white rounded font-bold text-xs shadow transition flex items-center justify-center space-x-2 mt-3">
+          <i data-lucide="file-code" class="w-4 h-4"></i>
+          <span>Generate Electronic CLAIM-it Validation XML Packet</span>
+        </button>
+      `;
+      lucide.createIcons();
+    }
+
+    function generateClaimXml(encId) {
+      showToast("CLAIM-it XML Generated", `Electronically validated claim packet for ${encId} ready for NHIA Provider Portal upload.`, "success");
+      logAudit("NHIS_CLAIM_GENERATED", `Generated CLAIM-it XML for ${encId}`);
+    }
+
+    function renderStoresTable() {
+      const container = document.getElementById('centralStoresTable');
+      if (!container) return;
+
+      container.innerHTML = `
+        <table class="w-full text-left text-xs">
+          <thead class="bg-slate-900 text-slate-400 border-b border-slate-800">
+            <tr>
+              <th class="p-2">Item</th>
+              <th class="p-2">Category</th>
+              <th class="p-2">Stock Qty</th>
+              <th class="p-2">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${state.stores.map(s => `
+              <tr class="border-b border-slate-850 hover:bg-slate-900/50">
+                <td class="p-2 font-medium text-slate-200">${s.item}</td>
+                <td class="p-2 text-slate-400">${s.cat}</td>
+                <td class="p-2 font-mono font-bold text-slate-200">${s.qty}</td>
+                <td class="p-2"><span class="px-1.5 py-0.2 rounded text-[10px] ${s.status === 'Adequate' ? 'bg-emerald-950 text-emerald-400 border border-emerald-800' : 'bg-amber-950 text-amber-400 border border-amber-800'}">${s.status}</span></td>
+              </tr>
+            `).join('')}
+          </tbody>
+        </table>
+      `;
+    }
+
+    function renderProcurementLog() {
+      const container = document.getElementById('procurementLogList');
+      if (!container) return;
+
+      container.innerHTML = `
+        <div class="p-3 bg-slate-950 border border-slate-800 rounded text-xs space-y-1">
+          <div class="flex justify-between font-bold">
+            <span class="text-emerald-400 font-mono">PO-2026-0891</span>
+            <span class="text-amber-400">APPROVED (MoH Central)</span>
+          </div>
+          <div class="text-slate-300">Requisition: 500 Vials Ceftriaxone 1g Inj</div>
+          <div class="text-[10px] text-slate-400">Supplier: Ghana National Medical Stores (NMS)</div>
+        </div>
+      `;
+    }
+
+    function fastForwardTime(mins) {
+      state.encounters.forEach(e => {
+        e.timestamp = new Date(new Date(e.timestamp).getTime() - mins * 60000);
+      });
+      showToast("Time Simulation", `Fast-forwarded time by +${mins} minutes. Checking escalation timers...`, "escalation");
+      logAudit("SIMULATION_FAST_FORWARD", `Advanced clock by +${mins}m`);
+      renderJourneyBoard();
+    }
+
+    function triggerSimulatedArrival() {
+      const randomNames = ['Kwaku Dua', 'Abena Osei', 'Yaw Appiah', 'Akua Mansa'];
+      const name = randomNames[Math.floor(Math.random() * randomNames.length)];
+      const encId = `ENC-2026-${Math.floor(1000 + Math.random() * 9000)}`;
+
+      const emergencyEnc = {
+        encounterId: encId,
+        patientId: `GH-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+        ghanaCard: 'GHA-990123912-1',
+        fullName: name,
+        dob: '1990-01-01',
+        gender: 'Male',
+        nhisNo: 'NHIS-99102931',
+        paymentType: 'NHIS Active (Covered)',
+        entryPoint: 'Emergency Department',
+        currentStage: 'Nurse Triage',
+        triageCategory: 'Emergency',
+        vitals: { temp: '39.2', bp: '85/50', pulse: '130', resp: '28', spo2: '91%', bg: '4.2' },
+        complaint: 'Acute severe trauma / shock post motor accident.',
+        sbar: {
+          situation: 'Emergency arrival requiring immediate resuscitation.',
+          background: 'Motor vehicle accident victim.',
+          assessment: 'Hypotensive, tachypneic, severe distress.',
+          recommendation: 'Immediate trauma bay allocation.'
+        },
+        doctorNotes: null,
+        timestamp: new Date(),
+        acknowledged: false,
+        escalated: false
+      };
+
+      state.encounters.unshift(emergencyEnc);
+      showToast("EMERGENCY ARRIVAL", `Emergency patient ${name} (${encId}) registered at ER!`, "emergency");
+      logAudit("EMERGENCY_ARRIVAL_INJECTED", `Injected emergency encounter ${encId} for ${name}`);
+      renderJourneyBoard();
+    }
+
+    function resetSystemState() {
+      initializeSampleEncounters();
+      showToast("System Reset", "System state restored to initial Ghanaian sample dataset.", "info");
+      renderJourneyBoard();
+    }
+
+    window.onload = function() {
+      initializeSampleEncounters();
+      renderJourneyBoard();
+      lucide.createIcons();
+
+      // Real-time Escalation Check Loop every 10 seconds
+      setInterval(() => {
+        renderJourneyBoard();
+      }, 10000);
+    };
+  </script>
+</body>
+</html>
