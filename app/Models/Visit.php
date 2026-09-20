@@ -102,9 +102,19 @@ class Visit extends Model
         return $this->hasOne(Invoice::class);
     }
 
+    public function consultations()
+    {
+        return $this->hasMany(Consultation::class);
+    }
+
     public function nhisVerifiedBy()
     {
         return $this->belongsTo(User::class, 'nhis_verified_by');
+    }
+
+    public function admission()
+    {
+        return $this->hasOne(Admission::class);
     }
 
     public function updateStatus(string $newStatus)

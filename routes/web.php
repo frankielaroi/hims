@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\AdminDashboardController;
 use App\Http\Controllers\Admin\PatientMergeController;
 use App\Http\Controllers\Admin\ServicePriceController;
 use App\Http\Controllers\Admin\StaffController;
+use App\Http\Controllers\AdmissionController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\PasswordChangeController;
 use App\Http\Controllers\BillingController;
@@ -85,6 +86,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('nhis/{claim}/reject', [NhisController::class, 'reject'])->name('nhis.reject');
     Route::post('nhis/{claim}/resubmit', [NhisController::class, 'resubmit'])->name('nhis.resubmit');
     Route::get('nhis/{claim}/export', [NhisController::class, 'export'])->name('nhis.export');
+
+    // Admissions & Beds
+    Route::get('admissions', [AdmissionController::class, 'index'])->name('admissions.index');
+    Route::post('admissions/visits/{visit}/assign-bed', [AdmissionController::class, 'assignBed'])->name('admissions.assign-bed');
+    Route::get('admissions/{admission}', [AdmissionController::class, 'show'])->name('admissions.show');
+    Route::post('admissions/{admission}/transfer', [AdmissionController::class, 'transfer'])->name('admissions.transfer');
+    Route::post('admissions/{admission}/discharge', [AdmissionController::class, 'discharge'])->name('admissions.discharge');
+    Route::post('beds/{bed}/mark-available', [AdmissionController::class, 'markBedAvailable'])->name('beds.mark-available');
 
     // Admin Routes
     Route::middleware(['role:admin'])->prefix('admin')->name('admin.')->group(function () {

@@ -46,6 +46,13 @@
             'roles' => ['lab_tech', 'admin']
         ],
         [
+            'name' => 'Wards & Beds',
+            'route' => 'admissions.index',
+            'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M3 12h18M3 12a2 2 0 012-2h14a2 2 0 012 2m-18 0v6a1 1 0 001 1h1a1 1 0 001-1v-2h12v2a1 1 0 001 1h1a1 1 0 001-1v-6M6 10V8a2 2 0 012-2h8a2 2 0 012 2v2"></path></svg>',
+            'active' => request()->routeIs('admissions.*'),
+            'roles' => ['nurse', 'admin']
+        ],
+        [
             'name' => 'Schedule',
             'route' => 'dashboard',
             'icon' => '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>',

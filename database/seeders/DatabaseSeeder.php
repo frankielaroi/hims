@@ -23,6 +23,7 @@ class DatabaseSeeder extends Seeder
             DrugsSeeder::class,
             DrugBatchesSeeder::class,
             LabTestsSeeder::class,
+            WardsSeeder::class,
         ]);
     }
 }
