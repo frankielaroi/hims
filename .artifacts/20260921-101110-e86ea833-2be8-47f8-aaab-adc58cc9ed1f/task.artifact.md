@@ -1,0 +1,25 @@
+# Task Management
+
+- [ ] Research and Planning
+    - [x] Explore existing Lab module implementation
+    - [/] Create implementation plan
+- [ ] Database Schema Enhancements
+    - [ ] Create `LabSample` model and migration
+    - [ ] Create `LabReagent` model and migration
+    - [ ] Update `LabOrderItem` to link to `LabSample`
+- [ ] Core Functional Sub-Modules
+    - [ ] **Order & Entry Management**
+        - [ ] Implement manual lab order creation for walk-in patients
+    - [ ] **Sample Tracking & Barcoding**
+        - [ ] Implement sample collection workflow with barcode generation
+    - [ ] **Result Validation & Reporting**
+        - [ ] Enhance result entry with multi-tier review layout
+        - [ ] Implement critical value flagging
+    - [ ] **Inventory & Reagent Tracking**
+        - [ ] Implement inventory management for reagents
+- [ ] UI/UX Improvements
+    - [ ] Update Laboratory dashboard
+    - [ ] Add Lab Settings for test panel management
+- [ ] Verification and Testing
+    - [ ] Run existing `LaboratoryTest`
+    - [ ] Add new tests for sample tracking and inventory
