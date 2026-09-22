@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Visit extends Model
 {
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'patient_id',
@@ -84,7 +85,39 @@ class Visit extends Model
 
     public function pendingLabOrder()
     {
-        return $this->hasOne(LabOrder::class)->whereNotIn('status', ['verified', 'cancelled'])->latestOfMany();
+        return $this->hasOne(LabOrder::class)->outstanding()->latestOfMany();
+    }
+
+    /**
+     * Every lab order the laboratory has not finished with. A visit may have
+     * several in flight at once.
+     */
+    public function outstandingLabOrders()
+    {
+        return $this->hasMany(LabOrder::class)->outstanding();
+    }
+
+    /**
+     * Verified orders whose results the clinician has not read yet.
+     */
+    public function labOrdersAwaitingReview()
+    {
+        return $this->hasMany(LabOrder::class)->awaitingReview();
+    }
+
+    public function radiologyOrders()
+    {
+        return $this->hasMany(RadiologyOrder::class);
+    }
+
+    public function outstandingRadiologyOrders()
+    {
+        return $this->hasMany(RadiologyOrder::class)->outstanding();
+    }
+
+    public function radiologyOrdersAwaitingReview()
+    {
+        return $this->hasMany(RadiologyOrder::class)->awaitingReview();
     }
 
     public function prescriptions()
@@ -107,6 +140,16 @@ class Visit extends Model
         return $this->hasMany(Consultation::class);
     }
 
+    public function latestConsultation()
+    {
+        return $this->hasOne(Consultation::class)->latestOfMany();
+    }
+
+    public function diagnoses()
+    {
+        return $this->hasManyThrough(Diagnosis::class, Consultation::class);
+    }
+
     public function nhisVerifiedBy()
     {
         return $this->belongsTo(User::class, 'nhis_verified_by');
@@ -115,6 +158,21 @@ class Visit extends Model
     public function admission()
     {
         return $this->hasOne(Admission::class);
+    }
+
+    public function outcome()
+    {
+        return $this->hasOne(VisitOutcome::class)->latestOfMany();
+    }
+
+    public function damaRecord()
+    {
+        return $this->hasOne(DamaRecord::class);
+    }
+
+    public function deathRecord()
+    {
+        return $this->hasOne(DeathRecord::class);
     }
 
     public function referral()

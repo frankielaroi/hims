@@ -2,15 +2,28 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 
 class Drug extends Model
 {
+    use HasFactory;
+
     protected $fillable = [
         'name',
         'generic_name',
         'strength',
         'formulation',
+        'drug_class',
+        'max_daily_dose',
+        'max_single_dose',
+        'dose_unit',
+        'paediatric_max_per_kg',
+        'is_renally_cleared',
+        'is_hepatically_cleared',
+        'pregnancy_category',
+        'renal_guidance',
+        'hepatic_guidance',
         'is_nhis_covered',
         'cash_price',
         'nhis_price',
@@ -23,6 +36,8 @@ class Drug extends Model
         'cash_price' => 'decimal:2',
         'nhis_price' => 'decimal:2',
         'is_active' => 'boolean',
+        'is_renally_cleared' => 'boolean',
+        'is_hepatically_cleared' => 'boolean',
     ];
 
     public function batches()

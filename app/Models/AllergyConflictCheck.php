@@ -12,9 +12,20 @@ class AllergyConflictCheck extends Model
         'prescription_id',
         'allergy_found',
         'drug_prescribed',
+        'match_type',
+        'severity',
+        'was_overridden',
         'doctor_justification',
         'doctor_id',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'was_overridden' => 'boolean',
+            'created_at' => 'datetime',
+        ];
+    }
 
     public function prescription()
     {

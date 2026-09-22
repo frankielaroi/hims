@@ -6,11 +6,11 @@
 <div class="space-y-8">
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Billing</h1>
-            <p class="text-slate-500 mt-1">Invoices with an outstanding balance.</p>
+            <h1 class="text-3xl font-bold text-inherit tracking-tight">Billing</h1>
+            <p class="text-inherit mt-1">Invoices with an outstanding balance.</p>
         </div>
         <div class="flex items-center space-x-2 text-sm text-slate-500 bg-white px-4 py-2 rounded-xl shadow-sm border border-slate-200">
-            <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+            <span class="w-2 h-2 bg-inherit rounded-full animate-pulse"></span>
             <span>{{ $invoices->total() }} outstanding</span>
         </div>
     </div>
@@ -37,7 +37,7 @@
                         </td>
                         <td class="px-8 py-5 text-sm font-semibold text-slate-900">GHS {{ number_format($invoice->patient_amount, 2) }}</td>
                         <td class="px-8 py-5 text-sm font-medium text-slate-500">GHS {{ number_format($invoice->amount_paid, 2) }}</td>
-                        <td class="px-8 py-5 text-sm font-bold text-red-600">GHS {{ number_format($invoice->balanceDue(), 2) }}</td>
+                        <td class="px-8 py-5 text-sm font-bold text-red-700">GHS {{ number_format($invoice->balanceDue(), 2) }}</td>
                         <td class="px-8 py-5">
                             <span class="px-3 py-1 text-xs font-semibold rounded-full
                                 @if($invoice->status === 'partially_paid') bg-orange-100 text-orange-700
@@ -46,7 +46,7 @@
                             </span>
                         </td>
                         <td class="px-8 py-5 text-right">
-                            <a href="{{ route('billing.show', $invoice) }}" class="bg-amber-600 text-white px-5 py-2 rounded-xl font-semibold text-sm hover:bg-amber-700 transition-all shadow-sm">
+                            <a href="{{ route('billing.show', $invoice) }}" class="bg-blue-700 text-white px-5 py-2 rounded-xl font-semibold text-sm transition-all shadow-sm">
                                 Collect payment
                             </a>
                         </td>

@@ -9,12 +9,12 @@
         <p class="text-slate-500 mt-1">Manual entry for walk-in patients or diagnostic requests.</p>
     </div>
 
-    <form action="{{ route('lab.store') }}" method="POST" class="bg-white p-8 rounded-[2rem] shadow-sm border border-slate-200 space-y-6">
+    <form action="{{ route('lab.store') }}" method="POST" class="bg-inherit p-8 rounded-[2rem] shadow-sm border border-inherit space-y-6">
         @csrf
 
         <div>
-            <label class="block text-sm font-semibold text-slate-700 mb-2">Patient</label>
-            <select name="patient_id" required class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-slate-900 font-medium focus:ring-2 focus:ring-purple-500">
+            <label class="block text-sm font-semibold text-inherit mb-2">Patient</label>
+            <select name="patient_id" required class="w-full px-5 py-4 bg-slate-50 border-none rounded-2xl text-inherit font-medium focus:ring-2 focus:ring-purple-500">
                 <option value="">Select Patient</option>
                 @foreach($patients as $patient)
                     <option value="{{ $patient->id }}">{{ $patient->full_name }} ({{ $patient->hospital_id }})</option>

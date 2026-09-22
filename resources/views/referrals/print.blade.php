@@ -39,12 +39,17 @@
         <div class="box">{{ $referral->reason }}</div>
     </div>
 
-    @if($referral->visit->patient->allergies)
+    @php $allergies = $referral->visit->patient->activeAllergies; @endphp
     <div class="section">
         <h2>Known allergies</h2>
-        <div class="box">{{ implode(', ', $referral->visit->patient->allergies) }}</div>
+        <div class="box">
+            @forelse($allergies as $allergy)
+                {{ $allergy->allergen }} ({{ $allergy->severity }}@if($allergy->reaction) &ndash; {{ $allergy->reaction }}@endif){{ $loop->last ? '' : ';' }}
+            @empty
+                None recorded
+            @endforelse
+        </div>
     </div>
-    @endif
 
     <div class="section">
         <h2>Signature</h2>

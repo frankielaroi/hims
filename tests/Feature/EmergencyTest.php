@@ -107,10 +107,21 @@ class EmergencyTest extends TestCase
             'clinical_notes' => 'Patient arrived in critical condition.',
             'diagnoses' => [['code' => 'B54', 'description' => 'Severe malaria', 'is_primary' => true]],
             'outcome' => 'deceased',
+            // Certifying a death now requires the time, cause and manner.
+            'death_died_at' => now()->subMinutes(20)->format('Y-m-d H:i:s'),
+            'death_immediate_cause' => 'Cerebral malaria',
+            'death_manner' => 'natural',
         ]);
 
         $response->assertRedirect('/consultations');
         $this->assertDatabaseHas('visit_outcomes', ['visit_id' => $visit->id, 'outcome' => 'deceased']);
+        $this->assertDatabaseHas('death_records', [
+            'visit_id' => $visit->id,
+            'patient_id' => $patient->id,
+            'immediate_cause' => 'Cerebral malaria',
+            'manner' => 'natural',
+            'certified_by' => $doctor->id,
+        ]);
         $this->assertEquals('completed', $visit->fresh()->status);
     }
 }

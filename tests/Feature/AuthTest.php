@@ -115,4 +115,26 @@ class AuthTest extends TestCase
 
         $this->assertDatabaseMissing('sessions', ['id' => 'session1']);
     }
+
+    public function test_user_can_change_password()
+    {
+        $user = User::create([
+            'name' => 'Test User',
+            'username' => 'test.user',
+            'password' => Hash::make('password'),
+            'status' => 'active',
+            'requires_password_change' => true,
+        ]);
+
+        $response = $this->actingAs($user)->post('/password/change', [
+            'current_password' => 'password',
+            'password' => 'NewPass123!',
+            'password_confirmation' => 'NewPass123!',
+        ]);
+
+        $response->assertRedirect('/dashboard');
+        $user->refresh();
+        $this->assertTrue(Hash::check('NewPass123!', $user->password));
+        $this->assertFalse($user->requires_password_change);
+    }
 }

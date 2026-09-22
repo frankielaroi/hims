@@ -2,12 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Patient extends Model
 {
-    use SoftDeletes;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'hospital_id',
@@ -37,6 +38,41 @@ class Patient extends Model
         'allergies' => 'array',
         'chronic_conditions' => 'array',
     ];
+
+    public function chronicMedications()
+    {
+        return $this->hasMany(PatientChronicMedication::class);
+    }
+
+    public function structuredAllergies()
+    {
+        return $this->hasMany(PatientAllergy::class);
+    }
+
+    public function activeAllergies()
+    {
+        return $this->hasMany(PatientAllergy::class)->where('status', 'active');
+    }
+
+    public function activeChronicMedications()
+    {
+        return $this->hasMany(PatientChronicMedication::class)->where('is_active', true);
+    }
+
+    public function growthMeasurements()
+    {
+        return $this->hasMany(GrowthMeasurement::class);
+    }
+
+    public function immunizations()
+    {
+        return $this->hasMany(Immunization::class);
+    }
+
+    public function ancAssessments()
+    {
+        return $this->hasMany(AncAssessment::class);
+    }
 
     public function nhisHistory()
     {

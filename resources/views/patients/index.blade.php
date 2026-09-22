@@ -3,125 +3,124 @@
 @section('title', 'Patient Registry')
 
 @section('content')
-<div class="space-y-6">
-    <div class="flex items-center justify-between">
+<div class="max-w-5xl mx-auto space-y-5">
+    <div class="flex items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-slate-100 tracking-tight">Patients</h1>
-            <p class="text-slate-400 mt-1">Find an existing patient, or register someone new.</p>
+            <h1 class="text-xl font-semibold text-slate-900 tracking-tight">Patients</h1>
+            <p class="text-sm text-slate-500 mt-0.5">Find an existing patient, or register someone new.</p>
         </div>
         @if(auth()->user()->hasPermission('register_patients'))
-            <a href="{{ route('patients.create') }}" class="bg-emerald-600 text-white px-5 py-2.5 rounded-lg font-semibold text-sm hover:bg-emerald-500 shadow-lg shadow-emerald-950/50 transition-all duration-200 flex items-center">
-                <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
+            <a href="{{ route('patients.create') }}" class="bg-brand-600 text-white px-4 py-2 rounded-lg font-semibold text-sm hover:bg-brand-700 transition-colors flex items-center shrink-0">
+                <i data-lucide="plus" class="w-4 h-4 mr-1.5"></i>
                 Register a patient
             </a>
         @endif
     </div>
 
-    <!-- Search Section (Forced search before creation logic) -->
-    <div class="bg-slate-900 p-8 rounded-lg border border-slate-800">
-        <h2 class="text-lg font-bold text-slate-100 mb-2 flex items-center">
-            <i data-lucide="search" class="w-5 h-5 text-emerald-400 mr-3"></i>
-            Find a patient first
-        </h2>
-        <p class="text-sm text-slate-400 mb-6">A quick search by name, phone, or ID helps us avoid creating duplicate records.</p>
-
-        <form action="{{ route('patients.index') }}" method="GET" class="flex gap-3">
-            <div class="flex-1 relative">
-                <span class="absolute inset-y-0 left-0 pl-4 flex items-center text-slate-500">
-                    <i data-lucide="search" class="w-4 h-4"></i>
-                </span>
-                <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by name, hospital ID, NHIS number or phone..."
-                       class="block w-full pl-11 pr-5 py-3.5 bg-slate-950 border border-slate-700 rounded-lg text-slate-100 font-medium placeholder-slate-500 focus:ring-2 focus:ring-emerald-500 focus:outline-none transition-all">
-            </div>
-            <button type="submit" class="bg-emerald-600 text-white px-8 py-3.5 rounded-lg font-semibold hover:bg-emerald-500 shadow-lg shadow-emerald-950/50 transition-all text-sm">
-                Search
-            </button>
-        </form>
-    </div>
+    <!-- Search first, to avoid duplicate records -->
+    <form action="{{ route('patients.index') }}" method="GET" class="bg-white p-2 rounded-xl border border-slate-200 shadow-sm flex items-center gap-2">
+        <div class="flex-1 relative">
+            <span class="absolute inset-y-0 left-0 pl-3 flex items-center text-slate-400">
+                <i data-lucide="search" class="w-4 h-4"></i>
+            </span>
+            <input type="search" name="search" value="{{ request('search') }}" autofocus
+                   placeholder="Search by name, hospital ID, NHIS number or phone"
+                   class="block w-full pl-9 pr-3 py-2.5 bg-transparent text-sm text-slate-900 placeholder-slate-400 focus:outline-none">
+        </div>
+        @if(request('search'))
+            <a href="{{ route('patients.index') }}" class="px-3 py-2 text-sm font-medium text-slate-500 hover:text-slate-900 transition-colors">Clear</a>
+        @endif
+        <button type="submit" class="bg-brand-600 text-white px-5 py-2 rounded-lg text-sm font-semibold hover:bg-brand-700 transition-colors">
+            Search
+        </button>
+    </form>
 
     @if(!request('search'))
-    <div class="bg-slate-900/50 border-2 border-dashed border-slate-800 rounded-lg p-20 flex flex-col items-center justify-center text-center">
-        <div class="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center text-slate-500 mb-6">
-            <i data-lucide="user-search" class="w-8 h-8"></i>
+        <div class="flex flex-col items-center justify-center text-center py-16">
+            <div class="w-12 h-12 bg-brand-50 rounded-xl flex items-center justify-center text-brand-600 mb-4">
+                <i data-lucide="user-search" class="w-6 h-6"></i>
+            </div>
+            <h3 class="text-base font-semibold text-slate-900">Search to get started</h3>
+            <p class="text-sm text-slate-500 max-w-sm mt-1">A quick search by name, phone number or hospital ID helps us avoid duplicate records.</p>
         </div>
-        <h3 class="text-lg font-semibold text-slate-300">Search to get started</h3>
-        <p class="text-slate-500 max-w-sm mt-2 text-sm">Try a name, phone number, or hospital ID above to find a patient's record.</p>
-    </div>
-    @endif
+    @else
+        <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
+            <div class="px-5 py-3 border-b border-slate-200 flex items-center justify-between">
+                <h2 class="text-sm font-semibold text-slate-900">
+                    {{ $patients->total() }} {{ \Illuminate\Support\Str::plural('result', $patients->total()) }}
+                </h2>
+                <a href="{{ route('patients.create') }}" class="text-sm font-medium text-brand-600 hover:text-brand-700 flex items-center">
+                    <i data-lucide="plus" class="w-4 h-4 mr-1"></i>
+                    Register a new patient instead
+                </a>
+            </div>
 
-    @if(request('search'))
-    <div class="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
-        <div class="px-6 py-4 border-b border-slate-800 flex items-center justify-between">
-            <h3 class="text-base font-bold text-slate-100">Search results</h3>
-            <a href="{{ route('patients.create') }}" class="text-emerald-400 font-semibold text-sm hover:underline flex items-center">
-                <i data-lucide="plus" class="w-4 h-4 mr-2"></i>
-                Register a new patient instead
-            </a>
-        </div>
-        <div class="overflow-x-auto">
-            <table class="w-full">
-                <thead>
-                    <tr class="text-left text-xs font-semibold text-slate-500 border-b border-slate-800">
-                        <th class="px-6 py-3">Patient</th>
-                        <th class="px-6 py-3">Insurance / ID</th>
-                        <th class="px-6 py-3">Last updated</th>
-                        <th class="px-6 py-3 text-right">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-800">
-                    @forelse($patients as $patient)
-                    <tr class="hover:bg-slate-800/50 transition-colors">
-                        <td class="px-6 py-4">
-                            <div class="flex items-center">
-                                <div class="h-10 w-10 rounded-lg bg-emerald-950 border border-emerald-800 flex items-center justify-center text-emerald-400 font-bold mr-4">
-                                    {{ substr($patient->full_name, 0, 1) }}
-                                </div>
-                                <div>
-                                    <div class="text-sm font-semibold text-slate-100">{{ $patient->full_name }}</div>
-                                    <div class="text-xs text-slate-500 leading-tight">
-                                        {{ $patient->sex }} &bull; {{ $patient->age }} years<br>
-                                        <span class="text-slate-400">{{ $patient->address ?? 'No address on file' }}</span>
+            <div class="overflow-x-auto">
+                <table class="w-full">
+                    <thead>
+                        <tr class="text-left text-xs font-medium text-slate-500 bg-slate-50">
+                            <th class="px-5 py-2.5">Patient</th>
+                            <th class="px-5 py-2.5">ID and insurance</th>
+                            <th class="px-5 py-2.5">Last visit</th>
+                            <th class="px-5 py-2.5"><span class="sr-only">Actions</span></th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-100">
+                        @forelse($patients as $patient)
+                        <tr class="hover:bg-brand-50/40 transition-colors cursor-pointer" onclick="window.location='{{ route('patients.show', $patient) }}'">
+                            <td class="px-5 py-3">
+                                <div class="flex items-center">
+                                    <div class="h-9 w-9 rounded-lg bg-brand-50 flex items-center justify-center text-brand-700 text-sm font-semibold mr-3 shrink-0">
+                                        {{ strtoupper(substr($patient->full_name, 0, 1)) }}
+                                    </div>
+                                    <div class="min-w-0">
+                                        <div class="text-sm font-medium text-slate-900 truncate">{{ $patient->full_name }}</div>
+                                        <div class="text-xs text-slate-500 truncate">
+                                            {{ ucfirst($patient->sex) }} &bull; {{ $patient->age }} years &bull; {{ $patient->address ?? 'No address on file' }}
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-xs font-semibold text-slate-300">{{ $patient->hospital_id }}</div>
-                            <div class="text-xs text-slate-500">NHIS: {{ $patient->nhis_number ?? 'None on file' }}</div>
-                        </td>
-                        <td class="px-6 py-4">
-                            <div class="text-xs font-medium text-slate-400">{{ $patient->updated_at->format('d M, Y') }}</div>
-                            <div class="text-xs text-slate-500">{{ $patient->updated_at->diffForHumans() }}</div>
-                        </td>
-                        <td class="px-6 py-4 text-right">
-                            @if($patient->lastVisit)
-                                <div class="text-xs text-slate-500 mb-1">Last seen {{ $patient->lastVisit->created_at->format('d M, Y') }}</div>
-                            @endif
-                            <a href="{{ route('patients.show', $patient) }}" class="text-emerald-400 hover:text-emerald-300 font-semibold text-sm">Open record</a>
-                        </td>
-                    </tr>
-                    @empty
-                    <tr>
-                        <td colspan="4" class="px-6 py-20 text-center">
-                            <div class="flex flex-col items-center">
-                                <div class="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center text-slate-500 mb-4">
-                                    <i data-lucide="users" class="w-8 h-8"></i>
+                            </td>
+                            <td class="px-5 py-3 whitespace-nowrap">
+                                <div class="text-sm font-medium text-slate-900">{{ $patient->hospital_id }}</div>
+                                <div class="text-xs text-slate-500">NHIS: {{ $patient->nhis_number ?? 'None on file' }}</div>
+                            </td>
+                            <td class="px-5 py-3 whitespace-nowrap">
+                                <div class="text-sm text-slate-700">
+                                    {{ $patient->lastVisit ? $patient->lastVisit->created_at->format('d M, Y') : 'No visits yet' }}
                                 </div>
-                                <p class="text-slate-400 font-medium">We couldn't find anyone matching "{{ request('search') }}"</p>
-                                <a href="{{ route('patients.create') }}" class="mt-4 text-emerald-400 font-semibold hover:underline">Register them as a new patient</a>
-                            </div>
-                        </td>
-                    </tr>
-                    @endforelse
-                </tbody>
-            </table>
+                                <div class="text-xs text-slate-400">Updated {{ $patient->updated_at->diffForHumans() }}</div>
+                            </td>
+                            <td class="px-5 py-3 text-right whitespace-nowrap">
+                                <a href="{{ route('patients.show', $patient) }}" class="inline-flex items-center text-sm font-medium text-brand-600 hover:text-brand-700">
+                                    Open record
+                                    <i data-lucide="chevron-right" class="w-4 h-4 ml-0.5"></i>
+                                </a>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="4" class="px-5 py-14 text-center">
+                                <div class="flex flex-col items-center">
+                                    <div class="w-12 h-12 bg-slate-100 rounded-xl flex items-center justify-center text-slate-400 mb-3">
+                                        <i data-lucide="users" class="w-6 h-6"></i>
+                                    </div>
+                                    <p class="text-sm font-medium text-slate-700">We couldn't find anyone matching "{{ request('search') }}"</p>
+                                    <a href="{{ route('patients.create') }}" class="mt-2 text-sm font-medium text-brand-600 hover:text-brand-700 hover:underline">Register them as a new patient</a>
+                                </div>
+                            </td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            @if($patients->hasPages())
+                <div class="px-5 py-3 border-t border-slate-200">
+                    {{ $patients->links() }}
+                </div>
+            @endif
         </div>
-        @if($patients->hasPages())
-        <div class="px-6 py-4 bg-slate-950/50 border-t border-slate-800">
-            {{ $patients->links() }}
-        </div>
-        @endif
-    </div>
     @endif
 </div>
 @endsection

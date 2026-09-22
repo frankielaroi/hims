@@ -1,25 +1,27 @@
-# Task Management
+# Task Management - Consultation Module Enhancements
 
 - [ ] Research and Planning
-    - [x] Explore existing Lab module implementation
-    - [/] Create implementation plan
-- [ ] Database Schema Enhancements
-    - [ ] Create `LabSample` model and migration
-    - [ ] Create `LabReagent` model and migration
-    - [ ] Update `LabOrderItem` to link to `LabSample`
-- [ ] Core Functional Sub-Modules
-    - [ ] **Order & Entry Management**
-        - [ ] Implement manual lab order creation for walk-in patients
-    - [ ] **Sample Tracking & Barcoding**
-        - [ ] Implement sample collection workflow with barcode generation
-    - [ ] **Result Validation & Reporting**
-        - [ ] Enhance result entry with multi-tier review layout
-        - [ ] Implement critical value flagging
-    - [ ] **Inventory & Reagent Tracking**
-        - [ ] Implement inventory management for reagents
-- [ ] UI/UX Improvements
-    - [ ] Update Laboratory dashboard
-    - [ ] Add Lab Settings for test panel management
+    - [x] Identify missing features from user feedback
+    - [/] Analyze existing models and database schema
+    - [ ] Create implementation plan
+- [ ] Patient Safety & Clinical Controls
+    - [ ] Add Pregnancy/Lactation status to `Patient` or `Consultation`
+    - [ ] Implement Chronic Medication view/reconciliation
+    - [ ] Enhance Red-Flag Vitals logic (BP, HR, RR)
+    - [ ] Implement Severe Allergy Hard-Stop
+- [ ] System & State Logic
+    - [ ] Implement Concurrency Locking for consultations
+    - [ ] Implement "Save as Draft" for consultations
+    - [ ] Update Visit Status to "In-Consultation" upon opening
+    - [ ] Add "Back-to-Triage" routing
+- [ ] Data Fields & Validation
+    - [ ] Add Imaging/Document attachment support
+    - [ ] Implement Prescription Quantity Override (liquids, inhalers)
+    - [ ] Implement Outcome-Specific Validations (Admit, Refer, Deceased)
+- [ ] UI/UX Updates
+    - [ ] Update Consultation UI with new safety checks and validations
+    - [ ] Improve Queue visibility for "In-Consultation" patients
 - [ ] Verification and Testing
-    - [ ] Run existing `LaboratoryTest`
-    - [ ] Add new tests for sample tracking and inventory
+    - [ ] Add tests for draft saving and concurrency locking
+    - [ ] Verify hard-stop logic for severe allergies
+    - [ ] Test outcome-specific validations

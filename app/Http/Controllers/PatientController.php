@@ -4,9 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Models\AuditLog;
 use App\Models\Patient;
+use App\Models\PatientAllergy;
 use App\Models\PatientIdentityLog;
 use App\Models\PatientNhisHistory;
+use App\Services\ClinicalTimeline;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class PatientController extends Controller
 {
@@ -104,6 +108,22 @@ class PatientController extends Controller
         return view('patients.show', compact('patient'));
     }
 
+    /**
+     * The patient's whole record as one chronological story, across every visit.
+     */
+    public function timeline(Patient $patient, ClinicalTimeline $timeline)
+    {
+        if (! auth()->user()->hasPermission('view_clinical_history')) {
+            abort(403, 'You are not permitted to view clinical history.');
+        }
+
+        $entries = $timeline->for($patient);
+
+        $this->logAction('clinical_timeline_viewed', "Viewed the clinical timeline for: {$patient->full_name}", $patient->id);
+
+        return view('patients.timeline', compact('patient', 'entries'));
+    }
+
     public function edit(Patient $patient)
     {
         return view('patients.edit', compact('patient'));
@@ -161,23 +181,80 @@ class PatientController extends Controller
             abort(403, 'Only clinical staff can update safety records.');
         }
 
-        $validated = $request->validate([
+        $request->validate([
             'blood_group' => 'nullable|string',
+            'chronic_conditions' => 'nullable|string',
+            'allergies' => 'nullable|array',
+            'allergies.*.allergen' => 'nullable|string|max:255',
+            'allergies.*.reaction' => 'nullable|string|max:255',
+            'allergies.*.severity' => ['nullable', Rule::in(PatientAllergy::SEVERITIES)],
+            'allergies.*.status' => ['nullable', Rule::in(PatientAllergy::STATUSES)],
         ]);
 
-        // Process comma-separated strings into arrays
-        $allergies = $request->allergies ? array_map('trim', explode(',', $request->allergies)) : [];
         $conditions = $request->chronic_conditions ? array_map('trim', explode(',', $request->chronic_conditions)) : [];
 
-        $patient->update([
-            'blood_group' => $request->blood_group,
-            'allergies' => array_filter($allergies),
-            'chronic_conditions' => array_filter($conditions),
-        ]);
+        DB::transaction(function () use ($request, $patient, $conditions) {
+            $this->syncStructuredAllergies($patient, $request->input('allergies', []));
+
+            $patient->update([
+                'blood_group' => $request->blood_group,
+                'chronic_conditions' => array_filter($conditions),
+                // Deprecated mirror of the structured table, kept in step so older
+                // readers (and patient merging) do not silently lose allergens.
+                'allergies' => $patient->activeAllergies()->pluck('allergen')->all(),
+            ]);
+        });
 
         $this->logAction('clinical_data_updated', "Updated clinical safety data for: {$patient->full_name}", $patient->id);
 
         return redirect()->route('patients.show', $patient)->with('success', 'Clinical safety records updated.');
+    }
+
+    /**
+     * Write the submitted allergy rows to `patient_allergies`.
+     *
+     * An allergen the clinician removed is marked inactive rather than deleted,
+     * because an allergy that was once recorded is clinical history.
+     *
+     * @param  array<int, array<string, string|null>>  $rows
+     */
+    protected function syncStructuredAllergies(Patient $patient, array $rows): void
+    {
+        $submitted = [];
+
+        foreach ($rows as $row) {
+            $allergen = trim((string) ($row['allergen'] ?? ''));
+
+            if ($allergen === '') {
+                continue;
+            }
+
+            $submitted[] = strtolower($allergen);
+
+            $existing = $patient->structuredAllergies()
+                ->whereRaw('LOWER(allergen) = ?', [strtolower($allergen)])
+                ->first();
+
+            $attributes = [
+                'allergen' => $allergen,
+                'reaction' => $row['reaction'] ?? null,
+                'severity' => $row['severity'] ?? 'unknown',
+                'status' => $row['status'] ?? 'active',
+                'recorded_by' => auth()->id(),
+            ];
+
+            if ($existing) {
+                $existing->update($attributes);
+            } else {
+                $patient->structuredAllergies()->create($attributes);
+            }
+        }
+
+        $patient->structuredAllergies()
+            ->where('status', 'active')
+            ->get()
+            ->reject(fn (PatientAllergy $allergy) => in_array(strtolower($allergy->allergen), $submitted, true))
+            ->each(fn (PatientAllergy $allergy) => $allergy->update(['status' => 'inactive']));
     }
 
     protected function logAction(string $action, string $description, $patientId = null)

@@ -6,6 +6,88 @@
 @source '../**/*.js';
 
 @theme {
-    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
+    --font-sans: 'Roboto', ui-sans-serif, system-ui, sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji',
         'Segoe UI Symbol', 'Noto Color Emoji';
+    --font-roboto: 'Roboto', ui-sans-serif, system-ui, sans-serif;
+    --font-lato: 'Lato', ui-sans-serif, system-ui, sans-serif;
+
+    --color-brand-50:  #EFF6FF;
+    --color-brand-100: #DBEAFE;
+    --color-brand-200: #BFDBFE;
+    --color-brand-500: #3B82F6;
+    --color-brand-600: #2563EB;
+    --color-brand-700: #1D4ED8;
+    --color-brand-900: #1E3A8A;
+}
+
+/* Roboto Regular (400) */
+@font-face {
+    font-family: 'Roboto';
+    src: url('../fonts/roboto/Roboto-VariableFont_wdth,wght.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Roboto Italic (400) */
+@font-face {
+    font-family: 'Roboto';
+    src: url('../fonts/roboto/Roboto-Italic.ttf') format('truetype');
+    font-weight: 400;
+    font-style: italic;
+    font-display: swap;
+}
+
+/* Roboto Medium (500) */
+@font-face {
+    font-family: 'Roboto';
+    src: url('../fonts/roboto/Roboto-Medium.ttf') format('truetype');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Roboto Bold (700) */
+@font-face {
+    font-family: 'Roboto';
+    src: url('../fonts/roboto/Roboto-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Lato Regular (400) */
+@font-face {
+    font-family: 'Lato';
+    src: url('../fonts/lato/Lato-Regular.ttf') format('truetype');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Lato Italic (400) */
+@font-face {
+    font-family: 'Lato';
+    src: url('../fonts/lato/Lato-Italic.ttf') format('truetype');
+    font-weight: 400;
+    font-style: italic;
+    font-display: swap;
+}
+
+/* Lato Bold (700) */
+@font-face {
+    font-family: 'Lato';
+    src: url('../fonts/lato/Lato-Bold.ttf') format('truetype');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+}
+
+/* Lato Black (900) */
+@font-face {
+    font-family: 'Lato';
+    src: url('../fonts/lato/Lato-Black.ttf') format('truetype');
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
 }

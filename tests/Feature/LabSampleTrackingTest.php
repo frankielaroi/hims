@@ -19,6 +19,20 @@ class LabSampleTrackingTest extends TestCase
 {
     use RefreshDatabase;
 
+    /**
+     * Attach a set of permissions to a role.
+     *
+     * @param  list<string>  $slugs
+     */
+    protected function grant(Role $role, array $slugs): void
+    {
+        $role->permissions()->sync(
+            collect($slugs)
+                ->map(fn (string $slug) => Permission::updateOrCreate(['slug' => $slug], ['name' => $slug])->id)
+                ->all()
+        );
+    }
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -35,6 +49,14 @@ class LabSampleTrackingTest extends TestCase
 
         $this->doctor = User::factory()->create();
         $this->doctor->roles()->attach($this->doctorRole);
+
+        // The three tiers this file already models, now backed by the licensed
+        // acts each one is allowed to perform.
+        $this->grant($this->labTechRole, ['collect_lab_specimens', 'enter_lab_results', 'view_clinical_history']);
+        $this->grant($this->scientistRole, [
+            'collect_lab_specimens', 'enter_lab_results', 'authorize_lab_results', 'view_clinical_history',
+        ]);
+        $this->grant($this->doctorRole, ['order_lab_tests', 'view_clinical_history']);
 
         $this->dept = Department::create(['name' => 'OPD', 'slug' => 'opd']);
         $this->patient = Patient::create(['full_name' => 'Test Patient', 'sex' => 'male', 'hospital_id' => 'P-001', 'payment_method' => 'cash']);
@@ -138,9 +160,11 @@ class LabSampleTrackingTest extends TestCase
         $this->assertEquals('in_progress', $order->status);
         $this->assertFalse($order->allResultsAuthorized());
 
-        // Attempt verify before authorization should fail
-        $response = $this->actingAs($this->labTech)->post("/lab/{$order->id}/verify");
-        $response->assertStatus(422);
+        // An assistant may enter a value but is not licensed to release one.
+        $this->actingAs($this->labTech)->post("/lab/{$order->id}/verify")->assertForbidden();
+
+        // Even the scientist cannot verify until the results are authorized.
+        $this->actingAs($this->scientist)->post("/lab/{$order->id}/verify")->assertStatus(422);
 
         // Scientist authorizes
         $this->actingAs($this->scientist)->post("/lab/{$order->id}/authorize");
@@ -150,7 +174,7 @@ class LabSampleTrackingTest extends TestCase
         $this->assertEquals('completed', $order->status);
 
         // Final verification
-        $this->actingAs($this->labTech)->post("/lab/{$order->id}/verify");
+        $this->actingAs($this->scientist)->post("/lab/{$order->id}/verify");
         $order->refresh();
         $this->assertEquals('verified', $order->status);
     }

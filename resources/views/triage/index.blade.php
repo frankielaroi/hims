@@ -3,67 +3,67 @@
 @section('title', 'Triage Queue')
 
 @section('content')
-<div class="space-y-6">
-    <div class="flex items-center justify-between">
+<div class="max-w-5xl mx-auto space-y-5">
+    <div class="flex items-center justify-between gap-4">
         <div>
-            <h1 class="text-2xl font-bold text-slate-100 tracking-tight">Triage queue</h1>
-            <p class="text-slate-400 mt-1">Patients waiting to be assessed, in order of priority.</p>
+            <h1 class="text-xl font-semibold text-slate-900 tracking-tight">Triage queue</h1>
+            <p class="text-sm text-slate-500 mt-0.5">Patients waiting to be assessed, in order of priority.</p>
         </div>
-        <div class="flex items-center space-x-2 text-sm text-slate-400 bg-slate-900 border border-slate-800 px-4 py-2 rounded-lg">
-            <span class="w-2 h-2 bg-amber-500 rounded-full animate-pulse"></span>
+        <div class="flex items-center gap-2 text-sm font-medium text-slate-700 bg-white border border-slate-200 shadow-sm px-3.5 py-2 rounded-lg shrink-0">
+            <span class="w-2 h-2 bg-brand-500 rounded-full animate-pulse"></span>
             <span>{{ $visits->total() }} waiting</span>
         </div>
     </div>
 
-    <div class="bg-slate-900 rounded-lg border border-slate-800 overflow-hidden">
+    <div class="bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full">
                 <thead>
-                    <tr class="text-left text-xs font-semibold text-slate-500 border-b border-slate-800">
-                        <th class="px-6 py-3">Queue</th>
-                        <th class="px-6 py-3">Patient</th>
-                        <th class="px-6 py-3">Department</th>
-                        <th class="px-6 py-3 text-right">Actions</th>
+                    <tr class="text-left text-xs font-medium text-slate-500 bg-slate-50">
+                        <th class="px-5 py-2.5">Queue</th>
+                        <th class="px-5 py-2.5">Patient</th>
+                        <th class="px-5 py-2.5">Department</th>
+                        <th class="px-5 py-2.5"><span class="sr-only">Actions</span></th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-800">
+                <tbody class="divide-y divide-slate-100">
                     @forelse($visits as $visit)
-                    <tr class="hover:bg-slate-800/50 transition-colors">
-                        <td class="px-6 py-4">
-                            <div class="flex items-center space-x-3">
-                                <div class="text-lg font-bold text-slate-100">#{{ $visit->queue_number }}</div>
-                                <span class="px-3 py-1 text-xs font-semibold rounded-full
-                                    @if($visit->priority == 'emergency') bg-rose-950 text-rose-400 border border-rose-800
-                                    @elseif($visit->priority == 'urgent') bg-amber-950 text-amber-400 border border-amber-800
-                                    @else bg-blue-950 text-blue-400 border border-blue-800 @endif">
+                    <tr class="hover:bg-brand-50/40 transition-colors">
+                        <td class="px-5 py-3">
+                            <div class="flex items-center gap-3">
+                                <div class="text-lg font-semibold text-slate-900">#{{ $visit->queue_number }}</div>
+                                <span class="px-2.5 py-0.5 text-xs font-medium rounded-full
+                                    @if($visit->priority == 'emergency') bg-red-50 text-red-700 border border-red-100
+                                    @elseif($visit->priority == 'urgent') bg-amber-50 text-amber-700 border border-amber-100
+                                    @else bg-brand-50 text-brand-700 border border-brand-100 @endif">
                                     {{ ucfirst($visit->priority) }}
                                 </span>
                             </div>
-                            <div class="text-xs text-slate-500 mt-1">{{ $visit->visit_number }}</div>
+                            <div class="text-xs text-slate-400 mt-0.5">{{ $visit->visit_number }}</div>
                         </td>
-                        <td class="px-6 py-4">
-                            <div class="text-sm font-semibold text-slate-100">{{ $visit->patient->full_name }}</div>
-                            <div class="text-xs text-slate-400 font-medium">{{ $visit->patient->sex }} &bull; {{ $visit->patient->age }} years</div>
+                        <td class="px-5 py-3">
+                            <div class="text-sm font-medium text-slate-900">{{ $visit->patient->full_name }}</div>
+                            <div class="text-xs text-slate-500">{{ ucfirst($visit->patient->sex) }} &bull; {{ $visit->patient->age }} years</div>
                         </td>
-                        <td class="px-6 py-4">
-                            <span class="px-3 py-1 text-xs font-medium bg-slate-800 text-slate-300 rounded-lg">
+                        <td class="px-5 py-3">
+                            <span class="px-2.5 py-0.5 text-xs font-medium bg-slate-100 text-slate-600 rounded-md">
                                 {{ $visit->department->name }}
                             </span>
                         </td>
-                        <td class="px-6 py-4 text-right">
-                            <a href="{{ route('triage.create', $visit) }}" class="bg-amber-600 text-white px-5 py-2 rounded-lg font-semibold text-sm hover:bg-amber-500 transition-all shadow-sm">
+                        <td class="px-5 py-3 text-right whitespace-nowrap">
+                            <a href="{{ route('triage.create', $visit) }}" class="inline-flex items-center bg-brand-600 text-white px-4 py-1.5 rounded-lg font-semibold text-sm hover:bg-brand-700 transition-colors">
                                 Start triage
                             </a>
                         </td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="4" class="px-6 py-20 text-center">
+                        <td colspan="4" class="px-5 py-14 text-center">
                             <div class="flex flex-col items-center">
-                                <div class="w-16 h-16 bg-slate-800 rounded-2xl flex items-center justify-center text-slate-500 mb-4">
-                                    <i data-lucide="clipboard-list" class="w-8 h-8"></i>
+                                <div class="w-12 h-12 bg-brand-50 rounded-xl flex items-center justify-center text-brand-600 mb-3">
+                                    <i data-lucide="clipboard-check" class="w-6 h-6"></i>
                                 </div>
-                                <p class="text-slate-400 font-medium text-sm">No one's waiting right now</p>
+                                <p class="text-sm font-medium text-slate-700">No one's waiting right now</p>
                             </div>
                         </td>
                     </tr>
@@ -72,7 +72,7 @@
             </table>
         </div>
         @if($visits->hasPages())
-        <div class="px-6 py-4 bg-slate-950/50 border-t border-slate-800">
+        <div class="px-5 py-3 border-t border-slate-200">
             {{ $visits->links() }}
         </div>
         @endif

@@ -1,67 +1,72 @@
-# Laboratory Information Management (LIM) Module Enhancement Plan
+# Consultation Module Enhancement Plan v2
 
-This plan aims to transform the basic laboratory functionality into a robust LIM module by introducing structured sample tracking, manual order entry, reagent inventory, and enhanced result validation.
+This plan implements the comprehensive Consultation Module v2 proposal, focusing on clinical safety, structured documentation, and robust workflow logic.
+
+## Phased Approach
+
+### Phase 1: Clinical Safety Foundation (CURRENT)
+Focus: Data integrity, safety banners, lifecycle states, and structured core documentation.
+
+#### Database & Models
+- **[NEW MIGRATION] Update `consultations` table**:
+    - Add `status` (queued, assigned, in_progress, draft, ready_for_sign_off, signed, finalized).
+    - Add `locked_by` (user_id), `locked_at` (timestamp).
+    - Add `version` (integer) for clinical note versioning.
+- **[NEW MIGRATION] Update `diagnoses` table**:
+    - Add `type` (primary, secondary, comorbidity, differential).
+    - Add `certainty` (confirmed, probable, possible, rule-out).
+- **[NEW MIGRATION] Structured `patient_allergies` table**:
+    - Replace JSON `allergies` with a table: `patient_id`, `allergen`, `reaction`, `severity`, `status`.
+- **[NEW MIGRATION] `patient_chronic_medications` table**:
+    - `patient_id`, `drug_id`, `drug_name`, `strength`, `dose`, `route`, `frequency`, `is_active`.
+- **[NEW MIGRATION] Pregnancy Encounter Snapshot**:
+    - Add to `consultations`: `pregnancy_status`, `lmp`, `edd`, `gestational_age`, `lactation_status`.
+
+#### Backend Logic
+- **Concurrency Locking (Heartbeat)**: Implement a heartbeat mechanism to track active editing.
+- **Draft/Auto-save**: Implement server-side draft storage every 30 seconds.
+- **Medication Reconciliation**: Logic to "Continue" chronic meds into the current prescription.
+- **Allergy Engine**: Structured checking (exact, generic, class-based).
+
+---
+
+### Phase 2: Clinical Workflow
+Focus: Integration with Lab, Radiology, Referrals, and longitudinal timeline.
+
+- **Clinical Timeline**: Longitudinal view of all patient encounters.
+- **Laboratory Overhaul**: Remove "one pending order" limit, add result review tracking.
+- **Radiology Reports**: Attachment support and review workflow.
+- **Disposition Workflows**: Formal Admission, Discharge, DAMA, and Deceased workflows.
+
+---
+
+### Phase 3: Advanced Safety & Integration
+Focus: Clinical decision support and external systems.
+
+- **Advanced Safety Engine**: Drug-drug interactions, dose limits, renal/hepatic adjustments.
+- **Specialty Templates**: Pediatrics (growth charts, immunization), OB/GYN, Emergency.
+- **Clinical Task Management**: Outstanding follow-ups, pending results alerts.
+
+---
 
 ## User Review Required
-- **Analyzer Integration**: Real HL7 integration requires specialized middleware and hardware connection. I will implement a simulated "Result Import" feature that mimics this behavior for demonstration.
-- **Barcoding**: I will generate unique alphanumeric codes that can be rendered as barcodes using a library or simple font in the UI.
 
-## Proposed Changes
+- **Allergy Severity Hard-Stop**: The proposal mentions not creating an "impossible-to-bypass" hard-stop. I will implement a "Critical Warning" that requires a senior clinician's secondary approval or a very detailed justification.
+- **Heartbeat Interval**: I suggest a 60-second heartbeat with a 3-minute lock expiry.
 
-### Database & Models
-
-#### [NEW] [LabSample.php](file:///C:/Users/Frankie/hims/app/Models/LabSample.php)
-- Stores physical specimen details.
-- Fields: `lab_order_id`, `barcode_number`, `specimen_type`, `collected_by`, `collected_at`, `received_at`, `status` (collected, received, processed).
-
-#### [NEW] [LabReagent.php](file:///C:/Users/Frankie/hims/app/Models/LabReagent.php)
-- Tracks lab supplies.
-- Fields: `name`, `code`, `current_stock`, `min_stock_level`, `expiry_date`, `unit`.
-
-#### [LabOrderItem.php](file:///C:/Users/Frankie/hims/app/Models/LabOrderItem.php)
-- Update to include `lab_sample_id`.
-- Move specimen collection fields to `LabSample`.
-
----
-
-### Order & Entry Management
-
-#### [LabController.php](file:///C:/Users/Frankie/hims/app/Http/Controllers/LabController.php)
-- Add `create` and `store` methods for manual orders.
-- Add `receiveSample` method to track when a sample reaches the lab.
-
-#### [NEW] [lab/create.blade.php](file:///C:/Users/Frankie/hims/resources/views/lab/create.blade.php)
-- Form to create lab orders for existing patients.
-
----
-
-### Sample Tracking & Barcoding
-
-#### [lab/show.blade.php](file:///C:/Users/Frankie/hims/resources/views/lab/show.blade.php)
-- Group items by specimen type to facilitate sample collection.
-- Add "Print Barcode" button.
-
----
-
-### Inventory & Reagent Tracking
-
-#### [NEW] [LabInventoryController.php](file:///C:/Users/Frankie/hims/app/Http/Controllers/LabInventoryController.php)
-- Manage reagents and stock levels.
-
-#### [NEW] [lab/inventory/index.blade.php](file:///C:/Users/Frankie/hims/resources/views/lab/inventory/index.blade.php)
-- View for inventory management.
-
----
-
-## Verification Plan
+## Verification Plan (Phase 1)
 
 ### Automated Tests
-- `php artisan test --filter LaboratoryTest`: Verify existing flows still work.
-- Add new test `tests/Feature/LabSampleTrackingTest.php` to verify the new sample-based workflow.
+- `php artisan test --filter ConsultationLifecycleTest`:
+    - Verify state transitions (Draft -> Signed -> Finalized).
+    - Verify note versioning (Original vs Amended).
+- `php artisan test --filter ConcurrencyTest`:
+    - Verify heartbeat locking and "Break-Glass" override.
+- `php artisan test --filter AllergyEngineTest`:
+    - Verify structured matching (Generic vs Brand).
 
 ### Manual Verification
-1. Create a lab order for a patient.
-2. Collect specimens and observe barcode generation.
-3. Receive samples in the lab.
-4. Enter results and verify critical value flagging.
-5. Verify reagent stock levels after performing tests.
+1. Open a case; verify status changes to "In Progress" in the queue.
+2. Trigger an auto-save and verify data persists after refresh.
+3. Attempt to sign a consultation without a primary diagnosis (should fail).
+4. Perform an "Amendment" on a signed consultation and verify version history.

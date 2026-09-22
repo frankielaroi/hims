@@ -6,10 +6,10 @@
 <div class="space-y-8">
     <div class="flex items-center justify-between">
         <div>
-            <h1 class="text-3xl font-bold text-slate-900 tracking-tight">Lab Inventory</h1>
-            <p class="text-slate-500 mt-1">Manage reagents, batch tracking, and stock levels.</p>
+            <h1 class="text-3xl font-bold text-inherit tracking-tight">Lab Inventory</h1>
+            <p class="text-inherit mt-1">Manage reagents, batch tracking, and stock levels.</p>
         </div>
-        <a href="{{ route('lab.inventory.create') }}" class="bg-purple-600 text-white px-6 py-3 rounded-2xl font-bold hover:bg-purple-700 transition-all shadow-lg shadow-purple-100 flex items-center space-x-2">
+        <a href="{{ route('lab.inventory.create') }}" class="bg-inherit text-inherit px-6 py-3 rounded-2xl font-bold hover:bg-inherit transition-all shadow-lg shadow-purple-100 flex items-center space-x-2">
             <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
             <span>Add Reagent</span>
         </a>

@@ -46,10 +46,31 @@
             'roles' => ['doctor', 'admin']
         ],
         [
+            'name' => 'Tasks',
+            'route' => 'tasks.index',
+            'icon' => 'list-checks',
+            'active' => request()->routeIs('tasks.*'),
+            'roles' => ['doctor', 'nurse', 'admin']
+        ],
+        [
+            'name' => 'Radiology',
+            'route' => 'radiology.index',
+            'icon' => 'scan',
+            'active' => request()->routeIs('radiology.*'),
+            'roles' => ['radiographer', 'admin']
+        ],
+        [
             'name' => 'Laboratory',
             'route' => 'lab.index',
             'icon' => 'flask-conical',
             'active' => request()->routeIs('lab.*'),
+            'roles' => ['lab_tech', 'admin']
+        ],
+        [
+            'name' => 'Lab Inventory',
+            'route' => 'lab.inventory.index',
+            'icon' => 'package',
+            'active' => request()->routeIs('lab.inventory.*'),
             'roles' => ['lab_tech', 'admin']
         ],
         [
@@ -125,45 +146,46 @@
     ];
 @endphp
 
-<div class="flex flex-col w-64 bg-slate-900 border-r border-slate-800 h-screen sticky top-0 shrink-0">
-    <div class="flex items-center px-5 h-16 border-b border-slate-800">
-        <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-gradient-to-br from-emerald-600 to-teal-800 text-white font-bold border border-emerald-500/30 shrink-0">
-            🇬🇭
+<aside class="flex flex-col w-64 bg-white border-r border-slate-200 h-screen sticky top-0 shrink-0 font-lato">
+    <div class="flex items-center gap-3 px-5 h-16 border-b border-slate-200">
+        <div class="flex items-center justify-center w-9 h-9 rounded-lg bg-brand-50 shrink-0">
+            <i data-lucide="heart-pulse" class="w-5 h-5 text-brand-600"></i>
         </div>
-        <div class="ml-3 overflow-hidden">
-            <p class="text-sm font-bold text-slate-100 truncate">HIMS</p>
-            <p class="text-[10px] text-slate-500 truncate">MoH / GHS / NHIA</p>
+        <div class="overflow-hidden">
+            <p class="text-sm font-semibold text-slate-900 truncate">HIMS</p>
+            <p class="text-[11px] text-slate-500 truncate">MoH / GHS / NHIA</p>
         </div>
     </div>
 
     <div class="flex flex-col flex-1 px-3 py-4 overflow-y-auto">
-        <nav class="flex-1 space-y-0.5">
+        <nav class="flex-1 space-y-0.5" aria-label="Main navigation">
             @foreach($navItems as $item)
                 @if(in_array('all', $item['roles']) || count(array_intersect($roles, $item['roles'])) > 0)
                     <a href="{{ route($item['route']) }}"
-                       class="group flex items-center px-3 py-2.5 text-sm font-medium rounded-lg transition-all duration-150 {{ $item['active'] ? 'bg-emerald-600 text-white' : 'text-slate-400 hover:text-slate-100 hover:bg-slate-800' }}">
-                        <i data-lucide="{{ $item['icon'] }}" class="w-4 h-4 mr-3 shrink-0"></i>
+                       @if($item['active']) aria-current="page" @endif
+                       class="flex items-center px-3 py-2 text-sm rounded-lg transition-colors duration-150 {{ $item['active'] ? 'bg-brand-50 text-brand-700 font-semibold' : 'font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100' }}">
+                        <i data-lucide="{{ $item['icon'] }}" class="w-4 h-4 mr-3 shrink-0 {{ $item['active'] ? 'text-brand-600' : 'text-slate-400' }}"></i>
                         {{ $item['name'] }}
                     </a>
                 @endif
             @endforeach
         </nav>
 
-        <div class="pt-4 mt-4 border-t border-slate-800 space-y-2">
+        <div class="pt-4 mt-4 border-t border-slate-200 space-y-2">
             <div class="flex items-center px-3">
-                <img class="h-9 w-9 rounded-full border-2 border-slate-700" src="https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&background=059669&color=fff" alt="{{ $user->name }}">
+                <img class="h-9 w-9 rounded-full" src="https://ui-avatars.com/api/?name={{ urlencode($user->name) }}&background=DBEAFE&color=1D4ED8&bold=true" alt="{{ $user->name }}">
                 <div class="ml-3 overflow-hidden">
-                    <p class="text-sm font-semibold text-slate-100 truncate">{{ $user->name }}</p>
-                    <p class="text-[11px] text-slate-500 truncate">{{ implode(' & ', array_map('ucfirst', $roles)) ?: 'Staff' }}</p>
+                    <p class="text-sm font-semibold text-slate-900 truncate">{{ $user->name }}</p>
+                    <p class="text-xs text-slate-500 truncate">{{ implode(' & ', array_map('ucfirst', $roles)) ?: 'Staff' }}</p>
                 </div>
             </div>
             <form action="{{ route('logout') }}" method="POST">
                 @csrf
-                <button type="submit" class="w-full flex items-center px-3 py-2.5 text-sm font-medium text-slate-400 hover:text-slate-100 hover:bg-slate-800 rounded-lg transition-all">
-                    <i data-lucide="log-out" class="w-4 h-4 mr-3"></i>
+                <button type="submit" class="w-full flex items-center px-3 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors">
+                    <i data-lucide="log-out" class="w-4 h-4 mr-3 text-slate-400"></i>
                     Sign out
                 </button>
             </form>
         </div>
     </div>
-</div>
+</aside>

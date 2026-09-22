@@ -27,12 +27,20 @@ class RolesAndUsersSeeder extends Seeder
             'manage_pricing' => 'Can update service prices',
             'merge_patients' => 'Can combine duplicate patient records',
             'order_lab_tests' => 'Can order laboratory investigations',
-            'process_lab_orders' => 'Can collect specimens and record/verify lab results',
+            'collect_lab_specimens' => 'Can register samples and collect specimens for the laboratory',
+            'enter_lab_results' => 'Can enter raw laboratory result values',
+            'authorize_lab_results' => 'Can authorise and verify laboratory results for release',
+            'manage_lab_inventory' => 'Can manage laboratory reagent stock',
             'dispense_medication' => 'Can dispense prescriptions and manage pharmacy stock',
             'manage_billing' => 'Can view invoices and record patient payments',
             'manage_nhis_claims' => 'Can generate, submit, and track NHIS claims',
             'manage_admissions' => 'Can admit, transfer, and discharge patients',
             'manage_referrals' => 'Can accept, decline, and track patient referrals',
+            'amend_clinical_notes' => 'Can amend a signed consultation belonging to another clinician',
+            'override_consultation_lock' => 'Can break-glass into a consultation another clinician is editing',
+            'order_imaging' => 'Can request radiology investigations',
+            'process_radiology_orders' => 'Can perform imaging, file reports, and manage study attachments',
+            'manage_clinical_tasks' => 'Can view and close outstanding clinical tasks',
         ];
 
         foreach ($permissions as $slug => $name) {
@@ -51,11 +59,11 @@ class RolesAndUsersSeeder extends Seeder
             ],
             'doctor' => [
                 'name' => 'Medical Practitioner',
-                'permissions' => ['view_patients', 'view_clinical_history', 'update_clinical_safety', 'order_lab_tests', 'manage_referrals'],
+                'permissions' => ['view_patients', 'view_clinical_history', 'update_clinical_safety', 'order_lab_tests', 'manage_referrals', 'override_consultation_lock', 'order_imaging', 'manage_clinical_tasks'],
             ],
             'nurse' => [
                 'name' => 'Nursing Staff',
-                'permissions' => ['view_patients', 'register_patients', 'view_clinical_history', 'update_clinical_safety', 'manage_admissions', 'manage_referrals'],
+                'permissions' => ['view_patients', 'register_patients', 'view_clinical_history', 'update_clinical_safety', 'manage_admissions', 'manage_referrals', 'manage_clinical_tasks'],
             ],
             'receptionist' => [
                 'name' => 'Front Desk / Reception',
@@ -65,9 +73,21 @@ class RolesAndUsersSeeder extends Seeder
                 'name' => 'Pharmacist',
                 'permissions' => ['view_patients', 'view_clinical_history', 'dispense_medication'],
             ],
+            'radiographer' => [
+                'name' => 'Radiographer / Radiologist',
+                'permissions' => ['view_patients', 'view_clinical_history', 'process_radiology_orders'],
+            ],
             'lab_tech' => [
-                'name' => 'Lab Technician',
-                'permissions' => ['view_patients', 'view_clinical_history', 'process_lab_orders'],
+                'name' => 'Medical Laboratory Assistant',
+                'permissions' => ['view_patients', 'view_clinical_history', 'collect_lab_specimens', 'enter_lab_results', 'manage_lab_inventory'],
+            ],
+            'lab_scientist' => [
+                'name' => 'Medical Laboratory Scientist',
+                'permissions' => ['view_patients', 'view_clinical_history', 'collect_lab_specimens', 'enter_lab_results', 'authorize_lab_results', 'manage_lab_inventory'],
+            ],
+            'pathologist' => [
+                'name' => 'Pathologist',
+                'permissions' => ['view_patients', 'view_clinical_history', 'collect_lab_specimens', 'enter_lab_results', 'authorize_lab_results', 'manage_lab_inventory'],
             ],
             'cashier' => [
                 'name' => 'Cashier / Billing',
