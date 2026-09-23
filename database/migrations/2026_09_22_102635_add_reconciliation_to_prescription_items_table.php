@@ -7,13 +7,13 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Links a prescribed item back to the chronic medication it continues so
-     * medication reconciliation is auditable.
+     * Links a prescribed item to the chronic medication it continues, so
+     * reconciliation is auditable.
      */
     public function up(): void
     {
         Schema::table('prescription_items', function (Blueprint $table) {
-            $table->foreignId('chronic_medication_id')->nullable()->after('drug_id')
+            $table->foreignId('chronic_medication_id')->nullable()->after('updated_at')
                 ->constrained('patient_chronic_medications')->nullOnDelete();
         });
     }

@@ -11,8 +11,23 @@ class TriageAssessment extends Model
         'chief_complaint',
         'history_presenting_illness',
         'priority_level',
+        'etat_emergency_signs',
+        'etat_priority_signs',
         'nurse_id',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'etat_emergency_signs' => 'array',
+            'etat_priority_signs' => 'array',
+        ];
+    }
+
+    public function hasEtatEmergencySign(): bool
+    {
+        return ! empty($this->etat_emergency_signs);
+    }
 
     public function visit()
     {

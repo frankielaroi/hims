@@ -211,6 +211,169 @@ class PrescriptionSafetyEngineTest extends TestCase
         $this->assertFalse($doses[0]['requires_justification']);
     }
 
+    public function test_blocks_a_first_trimester_drug_when_the_patient_is_in_the_first_trimester(): void
+    {
+        $patient = Patient::factory()->create();
+        $consultation = Consultation::factory()->create([
+            'pregnancy_status' => 'pregnant',
+            'lmp' => now()->subWeeks(8),
+        ]);
+        $drug = Drug::factory()->named('Coartem', 'Artemether-Lumefantrine')->create([
+            'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_AVOID_FIRST,
+            'pregnancy_guidance' => 'Use quinine plus clindamycin in the first trimester.',
+        ]);
+
+        $findings = $this->engine->check($patient, [$this->item($drug)], $consultation);
+        $pregnancy = $this->ofCategory($findings, 'pregnancy');
+
+        $this->assertCount(1, $pregnancy);
+        $this->assertTrue($pregnancy[0]['requires_justification']);
+        $this->assertStringContainsString('first trimester', $pregnancy[0]['title']);
+        $this->assertStringContainsString('quinine', $pregnancy[0]['detail']);
+    }
+
+    public function test_a_first_trimester_drug_is_only_advisory_later_in_the_pregnancy(): void
+    {
+        $patient = Patient::factory()->create();
+        $consultation = Consultation::factory()->create([
+            'pregnancy_status' => 'pregnant',
+            'lmp' => now()->subWeeks(30),
+        ]);
+        $drug = Drug::factory()->named('Coartem', 'Artemether-Lumefantrine')->create([
+            'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_AVOID_FIRST,
+        ]);
+
+        $pregnancy = $this->ofCategory($this->engine->check($patient, [$this->item($drug)], $consultation), 'pregnancy');
+
+        $this->assertCount(1, $pregnancy);
+        $this->assertFalse($pregnancy[0]['requires_justification']);
+    }
+
+    public function test_an_unknown_gestational_age_warns_rather_than_blocking_or_going_quiet(): void
+    {
+        $patient = Patient::factory()->create();
+        $consultation = Consultation::factory()->create([
+            'pregnancy_status' => 'pregnant',
+            'lmp' => null,
+            'gestational_age' => null,
+        ]);
+        $drug = Drug::factory()->named('Brufen 400mg', 'Ibuprofen')->create([
+            'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_AVOID_THIRD,
+        ]);
+
+        $pregnancy = $this->ofCategory($this->engine->check($patient, [$this->item($drug)], $consultation), 'pregnancy');
+
+        // A missing date is not evidence of safety, so the finding still shows.
+        $this->assertCount(1, $pregnancy);
+        $this->assertFalse($pregnancy[0]['requires_justification']);
+        $this->assertStringContainsString('could not be confirmed', $pregnancy[0]['detail']);
+    }
+
+    public function test_reads_the_trimester_from_a_written_gestational_age_when_there_is_no_lmp(): void
+    {
+        $patient = Patient::factory()->create();
+        $consultation = Consultation::factory()->create([
+            'pregnancy_status' => 'pregnant',
+            'lmp' => null,
+            'gestational_age' => '32 weeks',
+        ]);
+        $drug = Drug::factory()->named('Brufen 400mg', 'Ibuprofen')->create([
+            'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_AVOID_THIRD,
+        ]);
+
+        $pregnancy = $this->ofCategory($this->engine->check($patient, [$this->item($drug)], $consultation), 'pregnancy');
+
+        $this->assertTrue($pregnancy[0]['requires_justification']);
+    }
+
+    public function test_a_contraindicated_drug_blocks_in_every_trimester(): void
+    {
+        $patient = Patient::factory()->create();
+        $consultation = Consultation::factory()->create([
+            'pregnancy_status' => 'pregnant',
+            'lmp' => now()->subWeeks(20),
+        ]);
+        $drug = Drug::factory()->named('Methotrexate 2.5mg', 'Methotrexate')->create([
+            'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_CONTRAINDICATED,
+        ]);
+
+        $pregnancy = $this->ofCategory($this->engine->check($patient, [$this->item($drug)], $consultation), 'pregnancy');
+
+        $this->assertTrue($pregnancy[0]['requires_justification']);
+        $this->assertStringContainsString('contraindicated', $pregnancy[0]['title']);
+    }
+
+    public function test_a_drug_with_no_recorded_category_is_not_flagged_in_pregnancy(): void
+    {
+        $patient = Patient::factory()->create();
+        $consultation = Consultation::factory()->create([
+            'pregnancy_status' => 'pregnant',
+            'lmp' => now()->subWeeks(8),
+        ]);
+        // Silence here means "nothing is recorded", not "this drug is safe" —
+        // the same rule the dose checks follow.
+        $drug = Drug::factory()->named('Unlisted 100mg', 'Unlisted')->create(['pregnancy_category' => null]);
+
+        $findings = $this->engine->check($patient, [$this->item($drug)], $consultation);
+
+        $this->assertSame([], $this->ofCategory($findings, 'pregnancy'));
+    }
+
+    public function test_a_patient_who_is_not_pregnant_raises_no_pregnancy_finding(): void
+    {
+        $patient = Patient::factory()->create();
+        $consultation = Consultation::factory()->create(['pregnancy_status' => 'none']);
+        $drug = Drug::factory()->named('Coartem', 'Artemether-Lumefantrine')->create([
+            'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_AVOID_FIRST,
+        ]);
+
+        $findings = $this->engine->check($patient, [$this->item($drug)], $consultation);
+
+        $this->assertSame([], $this->ofCategory($findings, 'pregnancy'));
+    }
+
+    public function test_blocks_a_drug_to_be_avoided_while_breastfeeding(): void
+    {
+        $patient = Patient::factory()->create();
+        $consultation = Consultation::factory()->create([
+            'pregnancy_status' => 'none',
+            'lactation_status' => 'breastfeeding',
+        ]);
+        $drug = Drug::factory()->named('Cytotoxic 10mg', 'Cytotoxic')->create([
+            'lactation_category' => PrescriptionSafetyEngine::LACTATION_AVOID,
+            'lactation_guidance' => 'Suspend breastfeeding for the duration of treatment.',
+        ]);
+
+        $pregnancy = $this->ofCategory($this->engine->check($patient, [$this->item($drug)], $consultation), 'pregnancy');
+
+        $this->assertCount(1, $pregnancy);
+        $this->assertTrue($pregnancy[0]['requires_justification']);
+        $this->assertSame('lactation:'.$drug->id, $pregnancy[0]['key']);
+        $this->assertStringContainsString('Suspend breastfeeding', $pregnancy[0]['detail']);
+    }
+
+    public function test_a_pregnant_and_breastfeeding_patient_gets_both_findings(): void
+    {
+        $patient = Patient::factory()->create();
+        $consultation = Consultation::factory()->create([
+            'pregnancy_status' => 'pregnant',
+            'lmp' => now()->subWeeks(8),
+            'lactation_status' => 'breastfeeding',
+        ]);
+        $drug = Drug::factory()->named('Flagyl 400mg', 'Metronidazole')->create([
+            'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_AVOID_FIRST,
+            'lactation_category' => PrescriptionSafetyEngine::LACTATION_CAUTION,
+        ]);
+
+        $pregnancy = $this->ofCategory($this->engine->check($patient, [$this->item($drug)], $consultation), 'pregnancy');
+
+        $this->assertCount(2, $pregnancy);
+        $this->assertEqualsCanonicalizing(
+            ['pregnancy:'.$drug->id, 'lactation:'.$drug->id],
+            array_column($pregnancy, 'key')
+        );
+    }
+
     public function test_flags_a_renally_cleared_drug_in_severe_renal_impairment(): void
     {
         $patient = Patient::factory()->create();

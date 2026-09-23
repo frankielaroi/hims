@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * What the patient is already taking, so it can be continued into a new
+     * prescription rather than retyped from memory.
      */
     public function up(): void
     {
@@ -26,9 +27,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('patient_chronic_medications');

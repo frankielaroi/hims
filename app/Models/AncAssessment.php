@@ -50,9 +50,22 @@ class AncAssessment extends Model
         'diastolic_bp',
         'haemoglobin',
         'urinalysis_protein',
-        'tt_given',
-        'iptp_given',
+        'urinalysis_glucose',
+        'iptp_dose_number',
+        'tt_dose_number',
+        'ifa_given',
+        'deworming_given',
         'itn_given',
+        'gravida',
+        'para',
+        'abortions',
+        'living_children',
+        'blood_group',
+        'rhesus',
+        'sickling_status',
+        'hiv_status',
+        'syphilis_status',
+        'hepatitis_b_status',
         'notes',
         'next_contact_due',
         'recorded_by',
@@ -61,12 +74,35 @@ class AncAssessment extends Model
     protected function casts(): array
     {
         return [
-            'tt_given' => 'boolean',
-            'iptp_given' => 'boolean',
+            'ifa_given' => 'boolean',
+            'deworming_given' => 'boolean',
             'itn_given' => 'boolean',
             'next_contact_due' => 'date',
         ];
     }
+
+    /**
+     * Results are recorded as reported, so a screening test that was done and
+     * came back negative is distinguishable from one that was never done.
+     *
+     * @var list<string>
+     */
+    public const SCREENING_RESULTS = ['reactive', 'non_reactive', 'not_done'];
+
+    /**
+     * @var list<string>
+     */
+    public const SICKLING_RESULTS = ['positive', 'negative', 'not_done'];
+
+    /**
+     * @var list<string>
+     */
+    public const BLOOD_GROUPS = ['A', 'B', 'AB', 'O'];
+
+    /**
+     * @var list<string>
+     */
+    public const RHESUS_VALUES = ['positive', 'negative'];
 
     public function patient(): BelongsTo
     {
@@ -130,6 +166,26 @@ class AncAssessment extends Model
         // Hypertension together with proteinuria is the pre-eclampsia pattern.
         if ($this->isHypertensive() && $this->hasSignificantProteinuria()) {
             $signs[] = 'Hypertension with proteinuria — assess for pre-eclampsia';
+        }
+
+        if ($this->rhesus === 'negative') {
+            $signs[] = 'Rhesus negative — anti-D prophylaxis and partner typing needed';
+        }
+
+        if ($this->hiv_status === 'reactive') {
+            $signs[] = 'HIV reactive — start or continue PMTCT';
+        }
+
+        if ($this->syphilis_status === 'reactive') {
+            $signs[] = 'Syphilis reactive — treat mother and partner';
+        }
+
+        if ($this->hepatitis_b_status === 'reactive') {
+            $signs[] = 'Hepatitis B reactive — arrange birth-dose prophylaxis for the baby';
+        }
+
+        if ($this->sickling_status === 'positive') {
+            $signs[] = 'Sickling positive — confirm with haemoglobin electrophoresis';
         }
 
         return $signs;

@@ -82,11 +82,71 @@
                         </div>
 
                         <div>
+                            <label for="blood_glucose" class="{{ $label }}">Blood glucose (mmol/L)</label>
+                            <input type="number" step="0.1" id="blood_glucose" name="blood_glucose" value="{{ old('blood_glucose') }}" class="{{ $input }}" placeholder="4.5">
+                        </div>
+
+                        <div>
+                            <label for="avpu" class="{{ $label }}">AVPU</label>
+                            <select id="avpu" name="avpu" class="{{ $input }}">
+                                <option value="">Not assessed</option>
+                                @foreach(['alert' => 'Alert', 'voice' => 'Responds to voice', 'pain' => 'Responds to pain', 'unresponsive' => 'Unresponsive'] as $value => $title)
+                                    <option value="{{ $value }}" @selected(old('avpu') === $value)>{{ $title }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+
+                        @if($usesEtat)
+                            <div>
+                                <label for="muac_cm" class="{{ $label }}">MUAC (cm)</label>
+                                <input type="number" step="0.1" id="muac_cm" name="muac_cm" value="{{ old('muac_cm') }}" class="{{ $input }}" placeholder="13.5">
+                            </div>
+                        @endif
+
+                        <div>
                             <span class="{{ $label }}">BMI</span>
                             <div id="bmi_display" class="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-semibold text-slate-400">---</div>
                         </div>
                     </div>
                 </section>
+
+                @if($usesEtat)
+                <section class="p-5 border-t border-slate-200">
+                    <h2 class="text-sm font-semibold text-slate-900 mb-1 flex items-center">
+                        <i data-lucide="siren" class="w-4 h-4 mr-2 text-red-600"></i>
+                        ETAT — emergency signs
+                    </h2>
+                    <p class="text-xs text-slate-500 mb-3">
+                        Any one of these means treat now. Ticking a sign raises the priority automatically.
+                    </p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        @foreach(\App\Services\EtatTriage::EMERGENCY_SIGNS as $code => $title)
+                            <label class="flex items-start gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-red-50/50 transition-colors">
+                                <input type="checkbox" name="etat_emergency_signs[]" value="{{ $code }}"
+                                       @checked(in_array($code, (array) old('etat_emergency_signs', []), true))
+                                       class="mt-0.5 rounded border-slate-300 text-red-600 focus:ring-red-500">
+                                <span class="text-xs text-slate-700">{{ $title }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+
+                    <h2 class="text-sm font-semibold text-slate-900 mt-5 mb-1 flex items-center">
+                        <i data-lucide="alert-triangle" class="w-4 h-4 mr-2 text-amber-600"></i>
+                        ETAT — priority signs
+                    </h2>
+                    <p class="text-xs text-slate-500 mb-3">Seen ahead of the queue.</p>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        @foreach(\App\Services\EtatTriage::PRIORITY_SIGNS as $code => $title)
+                            <label class="flex items-start gap-2 p-2.5 rounded-lg border border-slate-200 hover:bg-amber-50/50 transition-colors">
+                                <input type="checkbox" name="etat_priority_signs[]" value="{{ $code }}"
+                                       @checked(in_array($code, (array) old('etat_priority_signs', []), true))
+                                       class="mt-0.5 rounded border-slate-300 text-amber-600 focus:ring-amber-500">
+                                <span class="text-xs text-slate-700">{{ $title }}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                </section>
+                @endif
 
                 <section class="p-5">
                     <h2 class="text-sm font-semibold text-slate-900 mb-3 flex items-center">

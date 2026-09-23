@@ -37,6 +37,19 @@ class RadiologyOrder extends Model
     public const MODALITIES = ['xray', 'ultrasound', 'ct', 'mri', 'fluoroscopy'];
 
     /**
+     * Modalities that use ionising radiation. Ultrasound and MRI do not, so
+     * they carry no fetal dose and need no pregnancy check.
+     *
+     * @var list<string>
+     */
+    public const IONISING_MODALITIES = ['xray', 'ct', 'fluoroscopy'];
+
+    public function usesIonisingRadiation(): bool
+    {
+        return in_array($this->modality, self::IONISING_MODALITIES, true);
+    }
+
+    /**
      * @var list<string>
      */
     public const PRIORITIES = ['routine', 'urgent', 'stat'];

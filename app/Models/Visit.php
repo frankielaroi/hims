@@ -10,6 +10,13 @@ class Visit extends Model
 {
     use HasFactory, SoftDeletes;
 
+    /**
+     * A walk-in who comes straight to the laboratory for a named test and never
+     * sees triage or a doctor. Common in Ghana for routine malaria and typhoid
+     * checks, and it must not sit in the triage queue nobody will call it from.
+     */
+    public const TYPE_DIRECT_LAB = 'direct_lab';
+
     protected $fillable = [
         'patient_id',
         'department_id',
@@ -18,6 +25,7 @@ class Visit extends Model
         'type',
         'priority',
         'payment_method',
+        'exemption_category',
         'nhis_number_snapshot',
         'nhis_expiry_snapshot',
         'nhis_verified',
@@ -138,6 +146,11 @@ class Visit extends Model
     public function consultations()
     {
         return $this->hasMany(Consultation::class);
+    }
+
+    public function ancAssessments()
+    {
+        return $this->hasMany(AncAssessment::class);
     }
 
     public function latestConsultation()

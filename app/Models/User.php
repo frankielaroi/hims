@@ -30,6 +30,21 @@ class User extends Authenticatable
         'login_attempts',
         'contact_info',
         'department_id',
+        'licence_body',
+        'licence_number',
+        'licence_expires_on',
+    ];
+
+    /**
+     * The regulators whose licence numbers HEFRA inspects.
+     *
+     * @var array<string, string>
+     */
+    public const LICENCE_BODIES = [
+        'mdc' => 'Medical and Dental Council',
+        'nmc' => 'Nursing and Midwifery Council',
+        'ahpc' => 'Allied Health Professions Council',
+        'pharmacy_council' => 'Pharmacy Council',
     ];
 
     /**
@@ -53,7 +68,27 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'requires_password_change' => 'boolean',
+            'licence_expires_on' => 'date',
         ];
+    }
+
+    /**
+     * Whether this member of staff holds a licence that has run out.
+     *
+     * A missing expiry is not treated as expired: plenty of records will have
+     * no date until the register is filled in, and locking those people out
+     * would be worse than the gap it closes.
+     */
+    public function licenceHasExpired(): bool
+    {
+        return $this->licence_expires_on !== null && $this->licence_expires_on->isPast();
+    }
+
+    public function licenceBodyName(): ?string
+    {
+        return $this->licence_body === null
+            ? null
+            : (self::LICENCE_BODIES[$this->licence_body] ?? $this->licence_body);
     }
 
     public function roles(): BelongsToMany

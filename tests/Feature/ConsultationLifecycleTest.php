@@ -15,6 +15,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Visit;
+use App\Services\PrescriptionSafetyEngine;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -287,6 +288,66 @@ class ConsultationLifecycleTest extends TestCase
         $this->assertDatabaseHas('prescription_items', ['drug_id' => $drug->id, 'quantity_to_dispense' => 24]);
     }
 
+    public function test_the_disposition_is_marked_required_on_the_form(): void
+    {
+        // `outcome` is demanded at sign-off, so the form must stop the clinician
+        // before a round-trip that would discard the rest of what they typed.
+        $response = $this->actingAs($this->doctor)->get("/consultations/{$this->visit->id}");
+
+        $response->assertOk();
+        $response->assertSee('name="outcome" value="discharge" required', false);
+        $response->assertSee('Required to sign');
+        // A hidden control cannot be focused, and Chrome then blocks submission silently.
+        $response->assertDontSee('name="outcome" value="discharge" required class="peer sr-only"', false);
+    }
+
+    public function test_an_omitted_quantity_is_derived_from_the_frequency_and_duration(): void
+    {
+        $drug = Drug::factory()->named('Amoxil 500mg', 'Amoxicillin')->create();
+
+        // The prescribing form leaves quantity blank and labels it "Auto".
+        $this->actingAs($this->doctor)->post("/consultations/{$this->visit->id}", $this->signablePayload([
+            'prescription_items' => [
+                ['drug_id' => $drug->id, 'dose' => '500mg', 'frequency' => 'TDS', 'duration' => 7],
+            ],
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('prescription_items', [
+            'drug_id' => $drug->id,
+            'quantity_to_dispense' => 21,
+        ]);
+    }
+
+    public function test_a_quantity_the_clinician_typed_is_not_overwritten(): void
+    {
+        $drug = Drug::factory()->named('Amoxil 500mg', 'Amoxicillin')->create();
+
+        $this->actingAs($this->doctor)->post("/consultations/{$this->visit->id}", $this->signablePayload([
+            'prescription_items' => [
+                ['drug_id' => $drug->id, 'dose' => '500mg', 'frequency' => 'BD', 'duration' => 3, 'quantity' => 30],
+            ],
+        ]))->assertSessionHasNoErrors();
+
+        $this->assertDatabaseHas('prescription_items', [
+            'drug_id' => $drug->id,
+            'quantity_to_dispense' => 30,
+        ]);
+    }
+
+    public function test_an_unrecognised_frequency_still_asks_for_a_quantity(): void
+    {
+        $drug = Drug::factory()->named('Amoxil 500mg', 'Amoxicillin')->create();
+
+        // "PRN" has no doses per day, so there is nothing safe to infer.
+        $this->actingAs($this->doctor)->post("/consultations/{$this->visit->id}", $this->signablePayload([
+            'prescription_items' => [
+                ['drug_id' => $drug->id, 'dose' => '500mg', 'frequency' => 'PRN', 'duration' => 7],
+            ],
+        ]))->assertSessionHasErrors('prescription_items.0.quantity');
+
+        $this->assertDatabaseCount('prescription_items', 0);
+    }
+
     public function test_re_saving_a_draft_replaces_the_prescription_instead_of_duplicating_it(): void
     {
         $drug = Drug::factory()->named('Coartem', 'Artemether-Lumefantrine')->create();
@@ -484,6 +545,66 @@ class ConsultationLifecycleTest extends TestCase
             ],
             'safety_justifications' => [
                 $key => 'Mechanical valve on warfarin; aspirin indicated after cardiology advice.',
+            ],
+        ]));
+
+        $response->assertRedirect('/consultations');
+        $this->assertDatabaseHas('audit_logs', ['action' => 'prescription_safety_warning']);
+    }
+
+    public function test_organ_impairment_entered_on_this_submission_gates_the_first_save(): void
+    {
+        // The impairment is only written inside the transaction, so checking the
+        // stored consultation meant this gate never fired on a first save.
+        $gentamicin = Drug::factory()->named('Gentamicin 80mg', 'Gentamicin')->create([
+            'is_renally_cleared' => true,
+            'renal_guidance' => 'Extend the dosing interval and monitor levels.',
+        ]);
+
+        $response = $this->actingAs($this->doctor)->post("/consultations/{$this->visit->id}", $this->signablePayload([
+            'renal_impairment' => 'severe',
+            'prescription_items' => [
+                ['drug_id' => $gentamicin->id, 'dose' => '80mg', 'frequency' => 'TDS', 'duration' => 5, 'quantity' => 15],
+            ],
+        ]));
+
+        $response->assertSessionHasErrors("safety_justifications.organ-renal:{$gentamicin->id}");
+        $this->assertDatabaseCount('prescriptions', 0);
+    }
+
+    public function test_blocks_a_first_trimester_drug_for_a_pregnant_patient_without_a_justification(): void
+    {
+        $coartem = Drug::factory()->named('Coartem', 'Artemether-Lumefantrine')->create([
+            'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_AVOID_FIRST,
+            'pregnancy_guidance' => 'Use quinine plus clindamycin in the first trimester.',
+        ]);
+
+        $response = $this->actingAs($this->doctor)->post("/consultations/{$this->visit->id}", $this->signablePayload([
+            'pregnancy_status' => 'pregnant',
+            'lmp' => now()->subWeeks(9)->toDateString(),
+            'prescription_items' => [
+                ['drug_id' => $coartem->id, 'dose' => '4 tablets', 'frequency' => 'BD', 'duration' => 3, 'quantity' => 24],
+            ],
+        ]));
+
+        $response->assertSessionHasErrors("safety_justifications.pregnancy:{$coartem->id}");
+        $this->assertDatabaseCount('prescriptions', 0);
+    }
+
+    public function test_allows_a_pregnancy_warning_when_justified_and_records_it(): void
+    {
+        $coartem = Drug::factory()->named('Coartem', 'Artemether-Lumefantrine')->create([
+            'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_AVOID_FIRST,
+        ]);
+
+        $response = $this->actingAs($this->doctor)->post("/consultations/{$this->visit->id}", $this->signablePayload([
+            'pregnancy_status' => 'pregnant',
+            'lmp' => now()->subWeeks(9)->toDateString(),
+            'prescription_items' => [
+                ['drug_id' => $coartem->id, 'dose' => '4 tablets', 'frequency' => 'BD', 'duration' => 3, 'quantity' => 24],
+            ],
+            'safety_justifications' => [
+                "pregnancy:{$coartem->id}" => 'Severe malaria, quinine unavailable; benefit outweighs risk after consultant advice.',
             ],
         ]));
 

@@ -7,14 +7,14 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Consumables drawn down as results are produced.
      */
     public function up(): void
     {
         Schema::create('lab_reagents', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('code')->unique();
+            $table->string('code');
             $table->string('batch_number');
             $table->integer('current_stock')->default(0);
             $table->integer('min_stock_level')->default(10);
@@ -24,9 +24,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('lab_reagents');

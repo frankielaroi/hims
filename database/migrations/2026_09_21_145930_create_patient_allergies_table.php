@@ -7,7 +7,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * Structured allergies, replacing the free-text JSON list. Severity is what
+     * lets the prescribing engine tell a caution from a hard gate.
      */
     public function up(): void
     {
@@ -16,16 +17,13 @@ return new class extends Migration
             $table->foreignId('patient_id')->constrained()->onDelete('cascade');
             $table->string('allergen');
             $table->string('reaction')->nullable();
-            $table->string('severity')->default('moderate'); // mild, moderate, severe
-            $table->string('status')->default('active'); // active, inactive, resolved, suspected
+            $table->string('severity')->default('moderate');
+            $table->string('status')->default('active');
             $table->foreignId('recorded_by')->nullable()->constrained('users');
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('patient_allergies');

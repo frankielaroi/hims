@@ -7,9 +7,8 @@ return new class extends Migration
 {
     /**
      * Moves the legacy free-text `patients.allergies` JSON list into the
-     * structured `patient_allergies` table. The legacy column is left in place
-     * rather than dropped so no recorded allergen is destroyed; clinical screens
-     * now read the structured table instead.
+     * structured table. The legacy column is left in place rather than dropped,
+     * so no recorded allergen is destroyed.
      */
     public function up(): void
     {
@@ -44,10 +43,8 @@ return new class extends Migration
                         DB::table('patient_allergies')->insert([
                             'patient_id' => $patient->id,
                             'allergen' => $allergen,
-                            'reaction' => null,
                             'severity' => 'unknown',
                             'status' => 'active',
-                            'recorded_by' => null,
                             'created_at' => now(),
                             'updated_at' => now(),
                         ]);
@@ -57,8 +54,8 @@ return new class extends Migration
     }
 
     /**
-     * Backfilled rows cannot be told apart from rows entered afterwards, so the
-     * reverse migration intentionally does nothing rather than delete clinical data.
+     * Backfilled rows cannot be told apart from rows entered afterwards, so this
+     * intentionally does nothing rather than delete clinical data.
      */
     public function down(): void
     {

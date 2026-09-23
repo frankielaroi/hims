@@ -12,15 +12,21 @@ use App\Http\Controllers\BillingController;
 use App\Http\Controllers\ClinicalTaskController;
 use App\Http\Controllers\ConsultationController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DeliveryController;
 use App\Http\Controllers\EmergencyController;
+use App\Http\Controllers\ImciController;
 use App\Http\Controllers\LabController;
 use App\Http\Controllers\LabInventoryController;
+use App\Http\Controllers\MaternalDeathController;
 use App\Http\Controllers\NhisController;
 use App\Http\Controllers\PaediatricController;
 use App\Http\Controllers\PatientController;
 use App\Http\Controllers\PharmacyController;
+use App\Http\Controllers\PostnatalController;
 use App\Http\Controllers\RadiologyController;
 use App\Http\Controllers\ReferralController;
+use App\Http\Controllers\ResuscitationController;
+use App\Http\Controllers\TheatreController;
 use App\Http\Controllers\TriageController;
 use App\Http\Controllers\VisitController;
 use Illuminate\Support\Facades\Route;
@@ -59,6 +65,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('emergency', [EmergencyController::class, 'board'])->name('emergency.board');
     Route::get('emergency/register', [EmergencyController::class, 'create'])->name('emergency.create');
     Route::post('emergency/register', [EmergencyController::class, 'store'])->name('emergency.store');
+    Route::post('visits/{visit}/resuscitation', [ResuscitationController::class, 'store'])->name('resuscitation.store');
+    Route::post('resuscitation/{resuscitation}/complete', [ResuscitationController::class, 'complete'])->name('resuscitation.complete');
 
     // Triage
     Route::get('triage', [TriageController::class, 'index'])->name('triage.index');
@@ -104,9 +112,42 @@ Route::middleware(['auth'])->group(function () {
     Route::post('patients/{patient}/growth', [PaediatricController::class, 'storeMeasurement'])->name('paediatrics.growth.store');
     Route::post('patients/{patient}/immunizations', [PaediatricController::class, 'storeImmunization'])->name('paediatrics.immunizations.store');
 
+    // IMCI: integrated management of childhood illness
+    Route::get('patients/{patient}/imci', [ImciController::class, 'show'])->name('imci.show');
+    Route::post('visits/{visit}/imci', [ImciController::class, 'store'])->name('imci.store');
+
     // Antenatal care
     Route::get('patients/{patient}/anc', [AncController::class, 'show'])->name('anc.show');
     Route::post('visits/{visit}/anc', [AncController::class, 'store'])->name('anc.store');
+
+    // Labour, delivery and the newborn
+    Route::middleware('can_do:manage_deliveries')->group(function () {
+        Route::get('deliveries', [DeliveryController::class, 'index'])->name('deliveries.index');
+        Route::post('visits/{visit}/deliveries', [DeliveryController::class, 'store'])->name('deliveries.store');
+        Route::get('deliveries/{delivery}', [DeliveryController::class, 'show'])->name('deliveries.show');
+        Route::post('deliveries/{delivery}/observations', [DeliveryController::class, 'storeObservation'])->name('deliveries.observations.store');
+        Route::post('deliveries/{delivery}/outcome', [DeliveryController::class, 'storeOutcome'])->name('deliveries.outcome.store');
+        Route::post('deliveries/{delivery}/newborns/{newborn}/register', [DeliveryController::class, 'registerNewborn'])->name('deliveries.newborns.register');
+
+        // Postnatal care
+        Route::get('postnatal', [PostnatalController::class, 'index'])->name('postnatal.index');
+        Route::post('deliveries/{delivery}/postnatal', [PostnatalController::class, 'store'])->name('postnatal.store');
+    });
+
+    // Theatre
+    Route::middleware('can_do:manage_theatre')->group(function () {
+        Route::get('theatre', [TheatreController::class, 'index'])->name('theatre.index');
+        Route::post('visits/{visit}/operations', [TheatreController::class, 'store'])->name('theatre.store');
+        Route::post('operations/{operation}/complete', [TheatreController::class, 'complete'])->name('theatre.complete');
+    });
+
+    // Maternal death surveillance and response
+    Route::middleware('can_do:manage_maternal_death_surveillance')->group(function () {
+        Route::get('maternal-deaths', [MaternalDeathController::class, 'index'])->name('maternal-deaths.index');
+        Route::post('maternal-deaths/{deathRecord}/classify', [MaternalDeathController::class, 'classify'])->name('maternal-deaths.classify');
+        Route::post('maternal-deaths/{deathRecord}/notify', [MaternalDeathController::class, 'notify'])->name('maternal-deaths.notify');
+        Route::post('maternal-deaths/{deathRecord}/review', [MaternalDeathController::class, 'review'])->name('maternal-deaths.review');
+    });
 
     // Clinical tasks
     Route::get('tasks', [ClinicalTaskController::class, 'index'])->middleware('can_do:manage_clinical_tasks')->name('tasks.index');
@@ -144,6 +185,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('billing', [BillingController::class, 'index'])->name('billing.index');
         Route::get('billing/{invoice}', [BillingController::class, 'show'])->name('billing.show');
         Route::post('billing/{invoice}/payments', [BillingController::class, 'recordPayment'])->name('billing.payments.store');
+        Route::post('billing/payments/{payment}/settle', [BillingController::class, 'settlePayment'])->name('billing.payments.settle');
     });
 
     // NHIS Claims
@@ -165,6 +207,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('admissions/visits/{visit}/assign-bed', [AdmissionController::class, 'assignBed'])->name('admissions.assign-bed');
         Route::get('admissions/{admission}', [AdmissionController::class, 'show'])->name('admissions.show');
         Route::post('admissions/{admission}/transfer', [AdmissionController::class, 'transfer'])->name('admissions.transfer');
+        Route::post('admissions/{admission}/rounds', [AdmissionController::class, 'storeRoundNote'])->name('admissions.rounds.store');
         Route::post('admissions/{admission}/discharge', [AdmissionController::class, 'discharge'])->name('admissions.discharge');
         Route::post('beds/{bed}/mark-available', [AdmissionController::class, 'markBedAvailable'])->name('beds.mark-available');
     });
@@ -175,6 +218,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('referrals/{referral}/accept', [ReferralController::class, 'accept'])->name('referrals.accept');
         Route::post('referrals/{referral}/decline', [ReferralController::class, 'decline'])->name('referrals.decline');
         Route::post('referrals/{referral}/complete', [ReferralController::class, 'complete'])->name('referrals.complete');
+        Route::post('referrals/{referral}/pre-referral-treatment', [ReferralController::class, 'recordPreReferralTreatment'])->name('referrals.pre-referral.store');
         Route::get('referrals/{referral}/print', [ReferralController::class, 'print'])->name('referrals.print');
     });
 

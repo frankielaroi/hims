@@ -7,9 +7,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Known interactions between two drugs or two drug classes. A rule may be
-     * expressed either way round: by specific drug where the pair matters, or by
-     * class where the whole group behaves the same.
+     * Interactions between two drugs or two classes. A rule stated one way round
+     * applies both ways.
      */
     public function up(): void
     {
@@ -19,7 +18,7 @@ return new class extends Migration
             $table->string('drug_class')->nullable();
             $table->foreignId('interacts_with_drug_id')->nullable()->constrained('drugs')->cascadeOnDelete();
             $table->string('interacts_with_class')->nullable();
-            $table->string('severity')->default('moderate'); // minor, moderate, major, contraindicated
+            $table->string('severity')->default('moderate');
             $table->string('effect');
             $table->text('management')->nullable();
             $table->boolean('is_active')->default(true);

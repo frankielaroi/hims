@@ -8,12 +8,12 @@ return new class extends Migration
 {
     /**
      * Organ function as assessed at this encounter, and the weight the dose
-     * checks work from. Recorded per consultation because it changes.
+     * checks work from. Per consultation, because it changes.
      */
     public function up(): void
     {
         Schema::table('consultations', function (Blueprint $table) {
-            $table->string('renal_impairment')->nullable()->after('lactation_status');   // none, mild, moderate, severe
+            $table->string('renal_impairment')->nullable()->after('autosaved_at');
             $table->string('hepatic_impairment')->nullable()->after('renal_impairment');
             $table->decimal('egfr', 6, 2)->nullable()->after('hepatic_impairment');
             $table->decimal('weight_kg', 6, 2)->nullable()->after('egfr');

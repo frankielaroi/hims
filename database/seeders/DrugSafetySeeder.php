@@ -4,6 +4,7 @@ namespace Database\Seeders;
 
 use App\Models\Drug;
 use App\Models\DrugInteraction;
+use App\Services\PrescriptionSafetyEngine;
 use Illuminate\Database\Seeder;
 
 /**
@@ -19,6 +20,66 @@ class DrugSafetySeeder extends Seeder
     {
         $this->applyDoseLimits();
         $this->applyInteractions();
+        $this->applyPregnancyAndLactationGuidance();
+    }
+
+    /**
+     * Pregnancy and lactation categories for the seeded formulary.
+     *
+     * Deliberately limited to entries that are unambiguous in the Ghana STG and
+     * the WHO malaria guidelines. A drug left out here has no category, and the
+     * engine then says nothing about it rather than implying it is safe — the
+     * same rule the dose checks follow. Load the facility formulary on top.
+     */
+    protected function applyPregnancyAndLactationGuidance(): void
+    {
+        $guidance = [
+            'Artemether-Lumefantrine' => [
+                'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_AVOID_FIRST,
+                'pregnancy_guidance' => 'Not recommended in the first trimester: treat uncomplicated malaria with quinine plus clindamycin, and use ACT from the second trimester onwards.',
+                'lactation_category' => PrescriptionSafetyEngine::LACTATION_CAUTION,
+                'lactation_guidance' => 'Acceptable while breastfeeding; observe the infant.',
+            ],
+            'Ciprofloxacin' => [
+                'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_CAUTION,
+                'pregnancy_guidance' => 'Fluoroquinolone. Avoid unless there is no safer alternative; prefer a beta-lactam in pregnancy.',
+                'lactation_category' => PrescriptionSafetyEngine::LACTATION_CAUTION,
+                'lactation_guidance' => 'Passes into breast milk; prefer an alternative where one is suitable.',
+            ],
+            'Metronidazole' => [
+                'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_AVOID_FIRST,
+                'pregnancy_guidance' => 'Avoid high-dose regimens in the first trimester.',
+                'lactation_category' => PrescriptionSafetyEngine::LACTATION_CAUTION,
+                'lactation_guidance' => 'Alters the taste of breast milk; consider deferring feeds after a single high dose.',
+            ],
+            'Cotrimoxazole' => [
+                'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_AVOID_FIRST,
+                'pregnancy_guidance' => 'Folate antagonist: avoid in the first trimester, and near term because of the risk of neonatal kernicterus. Give folic acid where it cannot be avoided.',
+                'lactation_category' => PrescriptionSafetyEngine::LACTATION_CAUTION,
+                'lactation_guidance' => 'Avoid in jaundiced, premature or G6PD-deficient infants.',
+            ],
+            'Ibuprofen' => [
+                'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_AVOID_THIRD,
+                'pregnancy_guidance' => 'NSAIDs risk premature closure of the ductus arteriosus and oligohydramnios in the third trimester. Paracetamol is the analgesic of choice in pregnancy.',
+                'lactation_category' => PrescriptionSafetyEngine::LACTATION_SAFE,
+            ],
+            'Paracetamol' => [
+                'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_SAFE,
+                'lactation_category' => PrescriptionSafetyEngine::LACTATION_SAFE,
+            ],
+            'Amoxicillin' => [
+                'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_SAFE,
+                'lactation_category' => PrescriptionSafetyEngine::LACTATION_SAFE,
+            ],
+            'Augmentin' => [
+                'pregnancy_category' => PrescriptionSafetyEngine::PREGNANCY_SAFE,
+                'lactation_category' => PrescriptionSafetyEngine::LACTATION_SAFE,
+            ],
+        ];
+
+        foreach ($guidance as $name => $attributes) {
+            Drug::where('name', $name)->update($attributes);
+        }
     }
 
     /**

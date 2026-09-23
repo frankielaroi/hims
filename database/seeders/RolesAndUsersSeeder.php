@@ -41,6 +41,9 @@ class RolesAndUsersSeeder extends Seeder
             'order_imaging' => 'Can request radiology investigations',
             'process_radiology_orders' => 'Can perform imaging, file reports, and manage study attachments',
             'manage_clinical_tasks' => 'Can view and close outstanding clinical tasks',
+            'manage_deliveries' => 'Can run the labour ward, record deliveries, postnatal care and register newborns',
+            'manage_theatre' => 'Can open and close operation records',
+            'manage_maternal_death_surveillance' => 'Can classify, notify and review maternal deaths',
         ];
 
         foreach ($permissions as $slug => $name) {
@@ -55,15 +58,19 @@ class RolesAndUsersSeeder extends Seeder
             ],
             'management' => [
                 'name' => 'Hospital Management',
-                'permissions' => ['view_patients', 'view_clinical_history', 'view_audit_logs'],
+                'permissions' => ['view_patients', 'view_clinical_history', 'view_audit_logs', 'manage_maternal_death_surveillance'],
             ],
             'doctor' => [
                 'name' => 'Medical Practitioner',
-                'permissions' => ['view_patients', 'view_clinical_history', 'update_clinical_safety', 'order_lab_tests', 'manage_referrals', 'override_consultation_lock', 'order_imaging', 'manage_clinical_tasks'],
+                'permissions' => ['view_patients', 'view_clinical_history', 'update_clinical_safety', 'order_lab_tests', 'manage_referrals', 'override_consultation_lock', 'order_imaging', 'manage_clinical_tasks', 'manage_deliveries', 'manage_theatre', 'manage_maternal_death_surveillance'],
             ],
             'nurse' => [
                 'name' => 'Nursing Staff',
                 'permissions' => ['view_patients', 'register_patients', 'view_clinical_history', 'update_clinical_safety', 'manage_admissions', 'manage_referrals', 'manage_clinical_tasks'],
+            ],
+            'midwife' => [
+                'name' => 'Midwife',
+                'permissions' => ['view_patients', 'register_patients', 'view_clinical_history', 'update_clinical_safety', 'manage_deliveries', 'manage_admissions', 'manage_referrals', 'manage_clinical_tasks', 'order_lab_tests', 'manage_maternal_death_surveillance'],
             ],
             'receptionist' => [
                 'name' => 'Front Desk / Reception',

@@ -47,6 +47,10 @@
                 @endphp
 
                 @if($pendingItemsBySpecimen->isNotEmpty())
+                    @cannot('collectSpecimen', $labOrder)
+                        <p class="text-xs text-slate-400 text-center py-4">Awaiting specimen collection by the laboratory.</p>
+                    @endcannot
+                    @can('collectSpecimen', $labOrder)
                     <div class="space-y-4">
                         @foreach($pendingItemsBySpecimen as $type => $items)
                             <form action="{{ route('lab.collect', $labOrder) }}" method="POST" class="p-4 bg-slate-50 rounded-2xl border border-slate-100">
@@ -67,6 +71,7 @@
                             </form>
                         @endforeach
                     </div>
+                    @endcan
                 @else
                     <p class="text-xs text-slate-400 text-center py-4">All specimens collected.</p>
                 @endif
@@ -90,18 +95,23 @@
 
                             <div class="flex gap-2">
                                 @if($sample->status == 'collected')
-                                    <form action="{{ route('lab.samples.receive', $sample) }}" method="POST" class="flex-1">
-                                        @csrf
-                                        <button class="w-full py-1.5 bg-green-600 text-white rounded-lg text-[10px] font-bold hover:bg-green-700 transition-all">Receive</button>
-                                    </form>
+                                    @can('receive', $sample)
+                                        <form action="{{ route('lab.samples.receive', $sample) }}" method="POST" class="flex-1">
+                                            @csrf
+                                            <button class="w-full py-1.5 bg-green-600 text-white rounded-lg text-[10px] font-bold hover:bg-green-700 transition-all">Receive</button>
+                                        </form>
+                                    @endcan
                                 @endif
 
                                 @if(in_array($sample->status, ['collected', 'received']))
-                                    <button onclick="document.getElementById('reject-modal-{{ $sample->id }}').classList.remove('hidden')" class="flex-1 py-1.5 bg-white border border-red-200 text-red-600 rounded-lg text-[10px] font-bold hover:bg-red-50 transition-all">Reject</button>
+                                    @can('reject', $sample)
+                                        <button onclick="document.getElementById('reject-modal-{{ $sample->id }}').classList.remove('hidden')" class="flex-1 py-1.5 bg-white border border-red-200 text-red-600 rounded-lg text-[10px] font-bold hover:bg-red-50 transition-all">Reject</button>
+                                    @endcan
                                 @endif
                             </div>
 
                             <!-- Reject Modal (Simplified for demo) -->
+                            @can('reject', $sample)
                             <div id="reject-modal-{{ $sample->id }}" class="hidden fixed inset-0 bg-slate-900/50 flex items-center justify-center z-50">
                                 <div class="bg-white p-6 rounded-[2rem] max-w-sm w-full mx-4 shadow-2xl">
                                     <h3 class="text-lg font-bold text-slate-900 mb-2">Reject Sample</h3>
@@ -116,6 +126,7 @@
                                     </form>
                                 </div>
                             </div>
+                            @endcan
                         </div>
                     @endforeach
                 </div>
@@ -147,6 +158,10 @@
 
                     @if($item->specimen_status === 'collected' && is_null($item->performed_at))
                         @if($item->labSample && $item->labSample->status == 'received')
+                            @cannot('enterResult', $item)
+                                <p class="text-xs text-slate-400 py-2">Awaiting result entry by the laboratory.</p>
+                            @endcannot
+                            @can('enterResult', $item)
                             <form action="{{ route('lab.items.result', [$labOrder, $item]) }}" method="POST" class="space-y-4">
                                 @csrf
                                 <div class="grid grid-cols-2 gap-4">
@@ -189,6 +204,7 @@
                                     Save Result for Review
                                 </button>
                             </form>
+                            @endcan
                         @else
                             <div class="flex flex-col items-center justify-center p-8 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
                                 <svg class="w-8 h-8 text-slate-300 mb-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -244,7 +260,7 @@
             $allAuth = $labOrder->allResultsAuthorized();
         @endphp
 
-        @if($readyForAuth)
+        @if($readyForAuth) @can('authorizeResults', $labOrder)
             <form action="{{ route('lab.authorize', $labOrder) }}" method="POST" class="flex-1">
                 @csrf
                 <button type="submit" class="w-full py-4 bg-purple-600 text-white rounded-2xl font-bold shadow-xl shadow-purple-100 hover:bg-purple-700 transition-all flex items-center justify-center space-x-2">
@@ -252,9 +268,9 @@
                     <span>Authorize Results</span>
                 </button>
             </form>
-        @endif
+        @endcan @endif
 
-        @if($allAuth && $labOrder->status !== 'verified')
+        @if($allAuth && $labOrder->status !== 'verified') @can('verify', $labOrder)
             <form action="{{ route('lab.verify', $labOrder) }}" method="POST" class="flex-1">
                 @csrf
                 <button type="submit" class="w-full py-4 bg-teal-600 text-white rounded-2xl font-bold shadow-xl shadow-teal-100 hover:bg-teal-700 transition-all flex items-center justify-center space-x-2">
@@ -262,7 +278,7 @@
                     <span>Verify & Close Order</span>
                 </button>
             </form>
-        @endif
+        @endcan @endif
     </div>
 </div>
 @endsection

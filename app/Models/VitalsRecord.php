@@ -14,8 +14,11 @@ class VitalsRecord extends Model
         'pulse_rate',
         'respiratory_rate',
         'spo2',
+        'blood_glucose',
         'weight',
         'height',
+        'muac_cm',
+        'avpu',
         'bmi',
         'recorded_by',
     ];

@@ -7,9 +7,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Prescriptions saved alongside a consultation draft are themselves drafts.
-     * The original enum omitted that state, so widen it to a string to stay in
-     * step with the consultation lifecycle.
+     * A prescription saved beside a consultation draft is itself a draft, which
+     * the original enum had no room for.
      */
     public function up(): void
     {

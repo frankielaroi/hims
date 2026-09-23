@@ -6,6 +6,7 @@ use App\Http\Requests\Lab\CollectSpecimenRequest;
 use App\Http\Requests\Lab\RejectSampleRequest;
 use App\Http\Requests\Lab\SaveResultRequest;
 use App\Models\AuditLog;
+use App\Models\Department;
 use App\Models\Invoice;
 use App\Models\LabOrder;
 use App\Models\LabOrderItem;
@@ -52,16 +53,23 @@ class LabController extends Controller
 
         $patient = Patient::findOrFail($validated['patient_id']);
 
-        // Find or create an active visit for the patient
+        // A walk-in comes straight to the laboratory for a named test and never
+        // sees triage or a doctor, so the visit opens as direct_lab rather than
+        // being parked in the triage queue nobody will call them from.
         $visit = $patient->lastVisit;
+
         if (! $visit || $visit->closed_at) {
+            $department = Department::where('slug', 'opd-general')->first()
+                ?? Department::orderBy('id')->firstOrFail();
+
             $visit = $patient->visits()->create([
-                'department_id' => 1, // Default to General Outpatient or similar
+                'department_id' => $department->id,
                 'visit_number' => Visit::generateVisitNumber(),
-                'queue_number' => Visit::nextQueueNumber(1),
-                'type' => 'outpatient',
+                'queue_number' => Visit::nextQueueNumber($department->id),
+                'type' => Visit::TYPE_DIRECT_LAB,
+                'payment_method' => $patient->payment_method ?? 'cash',
                 'priority' => $validated['priority'],
-                'status' => 'waiting_triage',
+                'status' => 'waiting_lab',
                 'created_by' => auth()->id(),
             ]);
         }
@@ -70,7 +78,7 @@ class LabController extends Controller
             'visit_id' => $visit->id,
             'ordered_by' => auth()->id(),
             'priority' => $validated['priority'],
-            'clinical_indication' => $validated['clinical_indication'],
+            'clinical_indication' => $validated['clinical_indication'] ?? null,
             'status' => 'ordered',
         ]);
 
@@ -257,6 +265,8 @@ class LabController extends Controller
                 'Lab',
                 (float) $item->labTest->price,
                 $item->labTest->is_nhis_covered,
+                1,
+                $item->labTest->nhis_tariff !== null ? (float) $item->labTest->nhis_tariff : null,
             );
         }
 

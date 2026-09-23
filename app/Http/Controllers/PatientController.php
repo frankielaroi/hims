@@ -7,6 +7,7 @@ use App\Models\Patient;
 use App\Models\PatientAllergy;
 use App\Models\PatientIdentityLog;
 use App\Models\PatientNhisHistory;
+use App\Rules\GhanaCardPin;
 use App\Services\ClinicalTimeline;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -23,6 +24,7 @@ class PatientController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('full_name', 'like', "%{$search}%")
                     ->orWhere('hospital_id', 'like', "%{$search}%")
+                    ->orWhere('ghana_card_pin', 'like', '%'.GhanaCardPin::normalise($search).'%')
                     ->orWhere('nhis_number', 'like', "%{$search}%")
                     ->orWhere('phone_number', 'like', "%{$search}%");
             });
@@ -66,6 +68,10 @@ class PatientController extends Controller
             }
         }
 
+        // Canonicalise before validating, so a PIN read straight off the card
+        // as ten digits is accepted rather than rejected at the desk.
+        $request->merge(['ghana_card_pin' => GhanaCardPin::normalise($request->input('ghana_card_pin'))]);
+
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'sex' => 'required|in:male,female,other',
@@ -79,6 +85,9 @@ class PatientController extends Controller
             'nhis_expiry' => 'nullable|date',
             'payment_method' => 'required|string',
             'blood_group' => 'nullable|string',
+            'ghana_card_pin' => ['nullable', new GhanaCardPin, 'unique:patients,ghana_card_pin'],
+            'occupation' => 'nullable|string|max:120',
+            'religion' => 'nullable|string|max:120',
         ]);
 
         $validated['hospital_id'] = Patient::generateHospitalId();
@@ -131,6 +140,8 @@ class PatientController extends Controller
 
     public function update(Request $request, Patient $patient)
     {
+        $request->merge(['ghana_card_pin' => GhanaCardPin::normalise($request->input('ghana_card_pin'))]);
+
         $validated = $request->validate([
             'full_name' => 'required|string|max:255',
             'sex' => 'required|in:male,female,other',
@@ -143,11 +154,15 @@ class PatientController extends Controller
             'nhis_number' => 'nullable|string|unique:patients,nhis_number,'.$patient->id,
             'nhis_expiry' => 'nullable|date',
             'payment_method' => 'required|string',
+            'ghana_card_pin' => ['nullable', new GhanaCardPin, 'unique:patients,ghana_card_pin,'.$patient->id],
+            'occupation' => 'nullable|string|max:120',
+            'religion' => 'nullable|string|max:120',
         ]);
 
-        // Log sensitive identity changes
-        foreach (['full_name', 'date_of_birth', 'estimated_age', 'sex'] as $field) {
-            if ($request->has($field) && $patient->{$field} != $validated[$field]) {
+        // Log sensitive identity changes. The Ghana Card PIN belongs here: it is
+        // a national identifier, and changing it changes who the record is.
+        foreach (['full_name', 'date_of_birth', 'estimated_age', 'sex', 'ghana_card_pin'] as $field) {
+            if ($request->has($field) && $patient->{$field} != ($validated[$field] ?? null)) {
                 PatientIdentityLog::create([
                     'patient_id' => $patient->id,
                     'field_name' => $field,

@@ -477,11 +477,21 @@
 
                 <!-- Disposition / Outcome -->
                 <div class="{{ $card }}">
-                    <h2 class="text-sm font-bold text-slate-900 uppercase tracking-tight mb-4">Final Disposition</h2>
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-sm font-bold text-slate-900 uppercase tracking-tight">Final Disposition</h2>
+                        <span class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Required to sign</span>
+                    </div>
                     <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-5 gap-4">
                         @foreach(['discharge' => 'Discharge Home', 'admit' => 'Admit to Ward', 'refer' => 'External Referral', 'dama' => 'Left Against Advice', 'deceased' => 'Died in Care'] as $val => $title)
-                        <label class="block">
-                            <input type="radio" name="outcome" value="{{ $val }}" @checked(old('outcome') === $val) class="peer sr-only">
+                        {{--
+                            The radio is transparent and stretched over the whole card rather than
+                            `sr-only`: a required control the browser cannot focus makes Chrome
+                            refuse to submit without showing anything, which is worse than the
+                            server-side error. Save Draft carries formnovalidate, so `required`
+                            only binds the Sign path.
+                        --}}
+                        <label class="relative block">
+                            <input type="radio" name="outcome" value="{{ $val }}" required @checked(old('outcome') === $val) class="peer absolute inset-0 h-full w-full cursor-pointer opacity-0">
                             <span class="{{ $opt }}">
                                 <span class="block text-sm font-bold text-slate-900">{{ $title }}</span>
                             </span>
@@ -709,6 +719,150 @@
 
                     <button type="submit" class="mt-5 px-8 py-3 bg-indigo-600 text-white rounded-[2rem] text-sm font-black shadow-lg shadow-indigo-500/20 hover:bg-indigo-700 transition-all">
                         Send request to radiology
+                    </button>
+                </form>
+                @endif
+
+                @if($showObstetric && auth()->user()->hasPermission('update_clinical_safety'))
+                <form action="{{ route('anc.store', $visit) }}" method="POST"
+                      class="{{ $card }}" data-saves-draft-first>
+                    @csrf
+                    <div class="flex flex-wrap items-center justify-between gap-2 mb-4">
+                        <h2 class="text-sm font-bold text-slate-900 uppercase tracking-tight flex items-center gap-2">
+                            <i data-lucide="heart-pulse" class="w-4 h-4 text-rose-600"></i>
+                            Antenatal Contact
+                        </h2>
+                        <a href="{{ route('anc.show', $visit->patient) }}" class="text-[10px] font-bold text-rose-600 uppercase tracking-widest hover:text-rose-800">
+                            View full record
+                        </a>
+                    </div>
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <div>
+                            <label class="{{ $label }}">Gestation (weeks)</label>
+                            <input type="number" name="gestational_age_weeks" min="1" max="45" value="{{ old('gestational_age_weeks') }}" class="{{ $input }}">
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Fundal height (cm)</label>
+                            <input type="number" step="0.1" name="fundal_height_cm" value="{{ old('fundal_height_cm') }}" class="{{ $input }}">
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Fetal heart rate</label>
+                            <input type="number" name="fetal_heart_rate" value="{{ old('fetal_heart_rate') }}" class="{{ $input }}" placeholder="110-160">
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Presentation</label>
+                            <select name="presentation" class="{{ $input }}">
+                                <option value="">Not assessed</option>
+                                @foreach(\App\Models\AncAssessment::PRESENTATIONS as $presentation)
+                                    <option value="{{ $presentation }}" @selected(old('presentation') === $presentation)>{{ ucfirst(str_replace('_', ' ', $presentation)) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Weight (kg)</label>
+                            <input type="number" step="0.1" name="maternal_weight_kg" value="{{ old('maternal_weight_kg') }}" class="{{ $input }}">
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Systolic BP</label>
+                            <input type="number" name="systolic_bp" value="{{ old('systolic_bp') }}" class="{{ $input }}">
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Diastolic BP</label>
+                            <input type="number" name="diastolic_bp" value="{{ old('diastolic_bp') }}" class="{{ $input }}">
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Haemoglobin (g/dL)</label>
+                            <input type="number" step="0.1" name="haemoglobin" value="{{ old('haemoglobin') }}" class="{{ $input }}">
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Urine protein</label>
+                            <input type="text" name="urinalysis_protein" value="{{ old('urinalysis_protein') }}" class="{{ $input }}" placeholder="e.g. Nil, +, ++">
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Urine glucose</label>
+                            <input type="text" name="urinalysis_glucose" value="{{ old('urinalysis_glucose') }}" class="{{ $input }}" placeholder="e.g. Nil, +">
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Next contact due</label>
+                            <input type="date" name="next_contact_due" value="{{ old('next_contact_due') }}" class="{{ $input }}">
+                        </div>
+                    </div>
+
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-6 mb-3">Booking profile</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+                        <div>
+                            <label class="{{ $label }}">Blood group</label>
+                            <select name="blood_group" class="{{ $input }}">
+                                <option value="">Not recorded</option>
+                                @foreach(\App\Models\AncAssessment::BLOOD_GROUPS as $group)
+                                    <option value="{{ $group }}" @selected(old('blood_group') === $group)>{{ $group }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Rhesus</label>
+                            <select name="rhesus" class="{{ $input }}">
+                                <option value="">Not recorded</option>
+                                @foreach(\App\Models\AncAssessment::RHESUS_VALUES as $rhesus)
+                                    <option value="{{ $rhesus }}" @selected(old('rhesus') === $rhesus)>{{ ucfirst($rhesus) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="{{ $label }}">Sickling</label>
+                            <select name="sickling_status" class="{{ $input }}">
+                                <option value="">Not recorded</option>
+                                @foreach(\App\Models\AncAssessment::SICKLING_RESULTS as $result)
+                                    <option value="{{ $result }}" @selected(old('sickling_status') === $result)>{{ ucfirst(str_replace('_', ' ', $result)) }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        @foreach(['hiv_status' => 'HIV', 'syphilis_status' => 'Syphilis (VDRL)', 'hepatitis_b_status' => 'Hepatitis B'] as $field => $title)
+                            <div>
+                                <label class="{{ $label }}">{{ $title }}</label>
+                                <select name="{{ $field }}" class="{{ $input }}">
+                                    <option value="">Not recorded</option>
+                                    @foreach(\App\Models\AncAssessment::SCREENING_RESULTS as $result)
+                                        <option value="{{ $result }}" @selected(old($field) === $result)>{{ ucfirst(str_replace('_', ' ', $result)) }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-6 mb-3">Obstetric history</h3>
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                        @foreach(['gravida' => 'Gravida', 'para' => 'Para', 'abortions' => 'Abortions', 'living_children' => 'Living children'] as $field => $title)
+                            <div>
+                                <label class="{{ $label }}">{{ $title }}</label>
+                                <input type="number" name="{{ $field }}" min="0" max="25" value="{{ old($field) }}" class="{{ $input }}">
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <h3 class="text-xs font-bold text-slate-500 uppercase tracking-widest mt-6 mb-3">Given at this contact</h3>
+                    <div class="flex flex-wrap gap-4">
+                        @foreach(['iptp_given' => 'IPTp-SP dose', 'tt_given' => 'Tetanus toxoid dose', 'ifa_given' => 'Iron &amp; folic acid', 'deworming_given' => 'Deworming', 'itn_given' => 'Insecticide-treated net'] as $field => $title)
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="{{ $field }}" value="1" class="rounded border-slate-300 text-rose-600 focus:ring-rose-500">
+                                <span class="text-sm font-medium text-slate-700">{!! $title !!}</span>
+                            </label>
+                        @endforeach
+                    </div>
+                    {{-- Dose numbers are derived server-side from what has already been given. --}}
+                    <p class="text-xs text-slate-500 mt-2">
+                        IPTp is not given before {{ \App\Services\AntenatalSchedule::IPTP_MIN_GESTATION_WEEKS }} weeks, and doses must be at least
+                        {{ \App\Services\AntenatalSchedule::IPTP_MIN_INTERVAL_DAYS }} days apart. Dose numbers are worked out from the record.
+                    </p>
+
+                    <div class="mt-4">
+                        <label class="{{ $label }}">Notes</label>
+                        <textarea name="notes" rows="2" class="{{ $input }}">{{ old('notes') }}</textarea>
+                    </div>
+
+                    <button type="submit" class="mt-5 px-8 py-3 bg-rose-600 text-white rounded-[2rem] text-sm font-black shadow-lg shadow-rose-500/20 hover:bg-rose-700 transition-all">
+                        Record antenatal contact
                     </button>
                 </form>
                 @endif

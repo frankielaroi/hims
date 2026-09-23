@@ -30,6 +30,16 @@ class PatientFactory extends Factory
         return $this->state(fn (array $attributes) => ['sex' => 'female']);
     }
 
+    /**
+     * A child inside the ETAT age range.
+     */
+    public function child(int $ageYears = 2): static
+    {
+        return $this->state(fn (array $attributes) => [
+            'date_of_birth' => now()->subYears($ageYears)->subMonths(1)->format('Y-m-d'),
+        ]);
+    }
+
     public function nhis(): static
     {
         return $this->state(fn (array $attributes) => [

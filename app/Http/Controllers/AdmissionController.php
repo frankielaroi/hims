@@ -121,6 +121,48 @@ class AdmissionController extends Controller
         return back()->with('success', "Transferred to bed {$newBed->bed_number}.");
     }
 
+    /**
+     * A ward round note.
+     *
+     * An admission recorded who came in and who went out with nothing in
+     * between, so there was no way to show that a deteriorating patient had
+     * been seen.
+     */
+    public function storeRoundNote(Request $request, Admission $admission)
+    {
+        abort_unless($admission->status === 'admitted', 422, 'This patient has been discharged.');
+
+        $validated = $request->validate([
+            'rounded_at' => 'nullable|date|before_or_equal:now',
+            'subjective' => 'nullable|string',
+            'objective' => 'nullable|string',
+            'assessment' => 'required|string',
+            'plan' => 'required|string',
+            'seen_by_senior' => 'nullable|boolean',
+        ]);
+
+        $note = $admission->roundNotes()->create(array_merge($validated, [
+            'rounded_at' => $validated['rounded_at'] ?? now(),
+            'seen_by_senior' => $request->boolean('seen_by_senior'),
+            'recorded_by' => auth()->id(),
+        ]));
+
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'ward_round_note_recorded',
+            'description' => "Ward round note for admission #{$admission->id}.",
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'metadata' => [
+                'admission_id' => $admission->id,
+                'visit_id' => $admission->visit_id,
+                'ward_round_note_id' => $note->id,
+            ],
+        ]);
+
+        return back()->with('success', 'Ward round note recorded.');
+    }
+
     public function discharge(Request $request, Admission $admission)
     {
         abort_unless($admission->status === 'admitted', 422, 'This admission is already closed.');
@@ -150,6 +192,7 @@ class AdmissionController extends Controller
                 (float) $wardService->price,
                 $wardService->is_nhis_covered,
                 $days,
+                $wardService->nhis_tariff !== null ? (float) $wardService->nhis_tariff : null,
             );
         }
 

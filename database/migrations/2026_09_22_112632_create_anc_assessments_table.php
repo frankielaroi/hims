@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * One antenatal contact. The obstetric snapshot on the consultation records
-     * that the patient is pregnant; this records what was found at the visit.
+     * One antenatal contact: what was found at the visit, as opposed to the
+     * obstetric snapshot on the consultation.
      */
     public function up(): void
     {
@@ -21,7 +21,7 @@ return new class extends Migration
             $table->unsignedSmallInteger('gestational_age_weeks')->nullable();
             $table->decimal('fundal_height_cm', 5, 2)->nullable();
             $table->unsignedSmallInteger('fetal_heart_rate')->nullable();
-            $table->string('presentation')->nullable();     // cephalic, breech, transverse, not_assessed
+            $table->string('presentation')->nullable();
             $table->unsignedSmallInteger('fetal_movements')->nullable();
             $table->decimal('maternal_weight_kg', 6, 2)->nullable();
             $table->unsignedSmallInteger('systolic_bp')->nullable();

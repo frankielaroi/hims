@@ -19,6 +19,14 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        /**
+         * Azure App Service terminates TLS at its front end and forwards plain
+         * HTTP to the container, so the X-Forwarded-* headers are the only
+         * record of the original scheme and client IP (which the audit log
+         * depends on). The container is not reachable except via that proxy.
+         */
+        $middleware->trustProxies(at: '*');
+
         $middleware->web(append: [
             CheckAccountStatus::class,
         ]);

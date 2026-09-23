@@ -39,6 +39,32 @@
         <div class="box">{{ $referral->reason }}</div>
     </div>
 
+    {{-- The receiving facility must know what was already given, and when, or
+         the patient is double-dosed on arrival or untreated for the journey. --}}
+    <div class="section">
+        <h2>Treatment given before referral</h2>
+        <div class="box">
+            @if($referral->pre_referral_treatments)
+                <ul>
+                    @foreach($referral->preReferralTreatmentLabels() as $treatment)
+                        <li>{{ $treatment }}</li>
+                    @endforeach
+                </ul>
+                <p>
+                    Given {{ $referral->pre_referral_given_at?->format('d M Y H:i') }}
+                    @if($referral->preReferralGivenBy) by {{ $referral->preReferralGivenBy->name }} @endif
+                </p>
+                @if($referral->pre_referral_notes)
+                    <p>{{ $referral->pre_referral_notes }}</p>
+                @endif
+            @elseif($referral->needsPreReferralRecord())
+                <p><strong>NOT RECORDED.</strong> This is an {{ $referral->urgency }} referral; record what was given before the patient travels.</p>
+            @else
+                <p>None recorded.</p>
+            @endif
+        </div>
+    </div>
+
     @php $allergies = $referral->visit->patient->activeAllergies; @endphp
     <div class="section">
         <h2>Known allergies</h2>

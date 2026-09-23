@@ -7,13 +7,12 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Drug class (e.g. penicillin, sulfonamide, nsaid) backs class-based
-     * allergy matching in the allergy engine.
+     * Drug class backs class-based allergy and interaction matching.
      */
     public function up(): void
     {
         Schema::table('drugs', function (Blueprint $table) {
-            $table->string('drug_class')->nullable()->after('formulation');
+            $table->string('drug_class')->nullable()->after('updated_at');
         });
     }
 

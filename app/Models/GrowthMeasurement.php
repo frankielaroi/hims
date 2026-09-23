@@ -18,6 +18,12 @@ class GrowthMeasurement extends Model
 
     public const MUAC_MODERATE_CM = 12.5;
 
+    /**
+     * Two weighings closer together than this say more about the scale and the
+     * child's last feed than about growth, so they are not compared.
+     */
+    public const MIN_TREND_INTERVAL_DAYS = 14;
+
     protected $fillable = [
         'patient_id',
         'visit_id',
@@ -90,5 +96,85 @@ class GrowthMeasurement extends Model
             $muac < self::MUAC_MODERATE_CM => 'moderate',
             default => 'none',
         };
+    }
+
+    /**
+     * The child's own trajectory against the measurement before this one.
+     *
+     * Weight loss, or no gain at all over a meaningful interval, is faltering
+     * growth. This compares the child only with themselves — it is not a
+     * percentile, and it does not need the WHO reference tables the module
+     * deliberately does not carry.
+     *
+     * @return array{previous_weight_kg: float, change_kg: float, days: int, grade: string}|null
+     */
+    public function growthTrend(): ?array
+    {
+        if ($this->weight_kg === null) {
+            return null;
+        }
+
+        $previous = static::where('patient_id', $this->patient_id)
+            ->where('measured_at', '<', $this->measured_at)
+            ->whereNotNull('weight_kg')
+            ->orderByDesc('measured_at')
+            ->first();
+
+        if ($previous === null) {
+            return null;
+        }
+
+        $days = (int) $previous->measured_at->diffInDays($this->measured_at);
+
+        if ($days < self::MIN_TREND_INTERVAL_DAYS) {
+            return null;
+        }
+
+        $change = round((float) $this->weight_kg - (float) $previous->weight_kg, 2);
+
+        return [
+            'previous_weight_kg' => (float) $previous->weight_kg,
+            'change_kg' => $change,
+            'days' => $days,
+            'grade' => match (true) {
+                $change < 0 => 'losing_weight',
+                $change == 0.0 => 'static_weight',
+                default => 'gaining',
+            },
+        ];
+    }
+
+    /**
+     * What this measurement needs acting on.
+     *
+     * @return list<string>
+     */
+    public function alerts(): array
+    {
+        $alerts = [];
+
+        $grade = $this->acuteMalnutritionGrade();
+
+        if ($grade === 'severe') {
+            $alerts[] = 'Severe acute malnutrition by MUAC ('.$this->muac_cm.' cm) — admit to therapeutic feeding';
+        } elseif ($grade === 'moderate') {
+            $alerts[] = 'Moderate acute malnutrition by MUAC ('.$this->muac_cm.' cm) — start supplementary feeding';
+        }
+
+        $trend = $this->growthTrend();
+
+        if ($trend !== null && $trend['grade'] === 'losing_weight') {
+            $alerts[] = sprintf(
+                'Faltering growth — lost %s kg in %d days (%s kg to %s kg)',
+                number_format(abs($trend['change_kg']), 2),
+                $trend['days'],
+                $trend['previous_weight_kg'],
+                $this->weight_kg
+            );
+        } elseif ($trend !== null && $trend['grade'] === 'static_weight') {
+            $alerts[] = sprintf('Faltering growth — no weight gain in %d days', $trend['days']);
+        }
+
+        return $alerts;
     }
 }

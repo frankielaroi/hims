@@ -7,14 +7,15 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * A barcoded specimen. Several ordered tests can run off one sample, so the
+     * sample is tracked separately from the order items.
      */
     public function up(): void
     {
         Schema::create('lab_samples', function (Blueprint $table) {
             $table->id();
             $table->foreignId('lab_order_id')->constrained()->onDelete('cascade');
-            $table->string('barcode_number')->unique();
+            $table->string('barcode_number');
             $table->string('specimen_type');
             $table->foreignId('collected_by')->nullable()->constrained('users');
             $table->timestamp('collected_at')->nullable();
@@ -25,9 +26,6 @@ return new class extends Migration
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('lab_samples');

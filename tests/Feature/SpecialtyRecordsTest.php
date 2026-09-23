@@ -10,6 +10,7 @@ use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use App\Models\Visit;
+use App\Services\AntenatalSchedule;
 use App\Services\ImmunizationSchedule;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -238,6 +239,121 @@ class SpecialtyRecordsTest extends TestCase
         $this->assertSame(
             [1, 2],
             AncAssessment::where('patient_id', $patient->id)->orderBy('contact_number')->pluck('contact_number')->all()
+        );
+    }
+
+    public function test_iptp_doses_are_numbered_so_the_record_can_prove_a_third_dose(): void
+    {
+        $patient = Patient::factory()->female()->create();
+        $visit = Visit::factory()->create(['patient_id' => $patient->id, 'created_by' => $this->nurse->id]);
+
+        // Doses must be at least a month apart, so travel between them.
+        foreach ([16, 20, 24] as $index => $weeks) {
+            $this->travelTo(now()->addDays($index * 30));
+
+            $this->actingAs($this->nurse)->post("/visits/{$visit->id}/anc", [
+                'gestational_age_weeks' => $weeks,
+                'iptp_given' => 1,
+            ])->assertSessionHasNoErrors();
+        }
+
+        $this->travelBack();
+
+        $this->assertSame(
+            [1, 2, 3],
+            AncAssessment::where('patient_id', $patient->id)
+                ->whereNotNull('iptp_dose_number')
+                ->orderBy('iptp_dose_number')
+                ->pluck('iptp_dose_number')
+                ->all()
+        );
+
+        $this->assertTrue(app(AntenatalSchedule::class)->iptpStatus($patient->refresh())['is_complete']);
+    }
+
+    public function test_iptp_is_refused_in_the_first_trimester(): void
+    {
+        $patient = Patient::factory()->female()->create();
+        $visit = Visit::factory()->create(['patient_id' => $patient->id, 'created_by' => $this->nurse->id]);
+
+        // Sulfadoxine-pyrimethamine is not given before 13 weeks.
+        $this->actingAs($this->nurse)->post("/visits/{$visit->id}/anc", [
+            'gestational_age_weeks' => 10,
+            'iptp_given' => 1,
+        ])->assertSessionHasErrors('iptp_given');
+
+        $this->assertDatabaseCount('anc_assessments', 0);
+    }
+
+    public function test_iptp_is_refused_when_the_gestational_age_is_unknown(): void
+    {
+        $patient = Patient::factory()->female()->create();
+        $visit = Visit::factory()->create(['patient_id' => $patient->id, 'created_by' => $this->nurse->id]);
+
+        // An unrecorded gestation cannot be assumed to be past the first trimester.
+        $this->actingAs($this->nurse)->post("/visits/{$visit->id}/anc", [
+            'iptp_given' => 1,
+        ])->assertSessionHasErrors('iptp_given');
+    }
+
+    public function test_iptp_doses_closer_than_a_month_apart_are_refused(): void
+    {
+        $patient = Patient::factory()->female()->create();
+        $visit = Visit::factory()->create(['patient_id' => $patient->id, 'created_by' => $this->nurse->id]);
+
+        $this->actingAs($this->nurse)->post("/visits/{$visit->id}/anc", [
+            'gestational_age_weeks' => 16,
+            'iptp_given' => 1,
+        ])->assertSessionHasNoErrors();
+
+        $this->actingAs($this->nurse)->post("/visits/{$visit->id}/anc", [
+            'gestational_age_weeks' => 17,
+            'iptp_given' => 1,
+        ])->assertSessionHasErrors('iptp_given');
+
+        $this->assertSame(1, AncAssessment::whereNotNull('iptp_dose_number')->count());
+    }
+
+    public function test_tetanus_doses_stop_at_the_fifth(): void
+    {
+        $patient = Patient::factory()->female()->create();
+        $visit = Visit::factory()->create(['patient_id' => $patient->id, 'created_by' => $this->nurse->id]);
+
+        for ($dose = 1; $dose <= AntenatalSchedule::TT_MAX_DOSES; $dose++) {
+            $this->actingAs($this->nurse)->post("/visits/{$visit->id}/anc", ['tt_given' => 1])
+                ->assertSessionHasNoErrors();
+        }
+
+        $this->actingAs($this->nurse)->post("/visits/{$visit->id}/anc", ['tt_given' => 1])
+            ->assertSessionHasErrors('tt_given');
+
+        $this->assertSame(
+            AntenatalSchedule::TT_MAX_DOSES,
+            AncAssessment::whereNotNull('tt_dose_number')->count()
+        );
+    }
+
+    public function test_the_antenatal_record_lists_the_outstanding_booking_profile(): void
+    {
+        $patient = Patient::factory()->female()->create();
+        $visit = Visit::factory()->create(['patient_id' => $patient->id, 'created_by' => $this->nurse->id]);
+
+        $this->actingAs($this->nurse)->post("/visits/{$visit->id}/anc", [
+            'gestational_age_weeks' => 14,
+            'haemoglobin' => 11.5,
+            'blood_group' => 'O',
+            'rhesus' => 'negative',
+        ]);
+
+        $response = $this->actingAs($this->nurse)->get("/patients/{$patient->id}/anc");
+
+        $response->assertOk();
+        $response->assertSee('Booking profile outstanding');
+        $response->assertSee('Syphilis (VDRL)');
+        // Rhesus negative needs anti-D, so it must surface as a danger sign.
+        $this->assertContains(
+            'Rhesus negative — anti-D prophylaxis and partner typing needed',
+            AncAssessment::where('patient_id', $patient->id)->sole()->dangerSigns()
         );
     }
 

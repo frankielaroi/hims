@@ -64,14 +64,42 @@
             'route' => 'lab.index',
             'icon' => 'flask-conical',
             'active' => request()->routeIs('lab.*'),
-            'roles' => ['lab_tech', 'admin']
+            'roles' => ['lab_tech', 'lab_scientist', 'pathologist', 'admin']
         ],
         [
             'name' => 'Lab Inventory',
             'route' => 'lab.inventory.index',
             'icon' => 'package',
             'active' => request()->routeIs('lab.inventory.*'),
-            'roles' => ['lab_tech', 'admin']
+            'roles' => ['lab_tech', 'lab_scientist', 'pathologist', 'admin']
+        ],
+        [
+            'name' => 'Labour Ward',
+            'route' => 'deliveries.index',
+            'icon' => 'baby',
+            'active' => request()->routeIs('deliveries.*'),
+            'roles' => ['midwife', 'doctor', 'nurse', 'admin']
+        ],
+        [
+            'name' => 'Postnatal',
+            'route' => 'postnatal.index',
+            'icon' => 'heart-handshake',
+            'active' => request()->routeIs('postnatal.*'),
+            'roles' => ['midwife', 'doctor', 'nurse', 'admin']
+        ],
+        [
+            'name' => 'Theatre',
+            'route' => 'theatre.index',
+            'icon' => 'scissors',
+            'active' => request()->routeIs('theatre.*'),
+            'roles' => ['doctor', 'admin']
+        ],
+        [
+            'name' => 'Maternal Deaths',
+            'route' => 'maternal-deaths.index',
+            'icon' => 'shield-alert',
+            'active' => request()->routeIs('maternal-deaths.*'),
+            'roles' => ['midwife', 'doctor', 'management', 'admin']
         ],
         [
             'name' => 'Wards & Beds',

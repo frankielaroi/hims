@@ -7,12 +7,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Outstanding clinical work that would otherwise only live in someone's head:
-     * results nobody has read, critical findings nobody has acknowledged, and
-     * follow-ups that were promised to a patient.
-     *
-     * Tasks are keyed by `source_type` + `source_id` so the generator can be run
-     * repeatedly without creating duplicates.
+     * Outstanding clinical work that would otherwise live only in someone's head.
+     * Keyed on the source row so the generator reconciles rather than duplicates.
      */
     public function up(): void
     {
@@ -20,16 +16,14 @@ return new class extends Migration
             $table->id();
             $table->foreignId('patient_id')->constrained()->onDelete('cascade');
             $table->foreignId('visit_id')->nullable()->constrained()->nullOnDelete();
-            $table->string('type');                       // pending_result, critical_result, unreviewed_report, follow_up
+            $table->string('type');
             $table->string('title');
             $table->text('description')->nullable();
-            $table->string('priority')->default('routine'); // routine, urgent, critical
-            $table->string('status')->default('open');      // open, done, cancelled
+            $table->string('priority')->default('routine');
+            $table->string('status')->default('open');
             $table->timestamp('due_at')->nullable();
-
             $table->string('source_type')->nullable();
             $table->unsignedBigInteger('source_id')->nullable();
-
             $table->foreignId('assigned_to')->nullable()->constrained('users');
             $table->foreignId('completed_by')->nullable()->constrained('users');
             $table->timestamp('completed_at')->nullable();

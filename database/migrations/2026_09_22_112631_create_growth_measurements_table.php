@@ -7,9 +7,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Serial growth measurements. Plotting a child's own trajectory over time is
-     * what catches faltering growth, so each measurement is kept rather than
-     * overwriting a "current" weight.
+     * Serial growth measurements. Plotting a child's own trajectory is what
+     * catches faltering growth, so every measurement is kept.
      */
     public function up(): void
     {

@@ -14,6 +14,8 @@ class InvoiceItem extends Model
         'unit_price',
         'total_price',
         'payer',
+        'is_exempt',
+        'exemption_reason',
         'nhis_amount',
         'patient_amount',
     ];
@@ -23,6 +25,7 @@ class InvoiceItem extends Model
         'total_price' => 'decimal:2',
         'nhis_amount' => 'decimal:2',
         'patient_amount' => 'decimal:2',
+        'is_exempt' => 'boolean',
     ];
 
     public function invoice()

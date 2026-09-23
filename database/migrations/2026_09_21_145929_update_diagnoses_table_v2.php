@@ -7,19 +7,17 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Run the migrations.
+     * A diagnosis is more than a code: its role in the encounter and how sure
+     * the clinician is both matter.
      */
     public function up(): void
     {
         Schema::table('diagnoses', function (Blueprint $table) {
-            $table->string('type')->default('primary')->after('description'); // primary, secondary, comorbidity, differential
-            $table->string('certainty')->default('confirmed')->after('type'); // confirmed, probable, possible, rule-out
+            $table->string('type')->default('primary')->after('updated_at');
+            $table->string('certainty')->default('confirmed')->after('type');
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::table('diagnoses', function (Blueprint $table) {

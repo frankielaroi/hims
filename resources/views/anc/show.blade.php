@@ -21,6 +21,34 @@
         </a>
     </div>
 
+    <div class="{{ $card }}">
+        <h2 class="text-sm font-bold text-slate-900 uppercase tracking-tight mb-4">Programme status</h2>
+        <div class="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            @php
+                $tiles = [
+                    ['label' => 'Contacts', 'value' => $summary['contacts'].' of '.$summary['target_contacts'], 'ok' => $summary['contacts'] >= $summary['target_contacts']],
+                    ['label' => 'IPTp-SP doses', 'value' => $summary['iptp']['given'].' of '.$summary['iptp']['target'], 'ok' => $summary['iptp']['is_complete']],
+                    ['label' => 'Tetanus doses', 'value' => $summary['tetanus']['given'].' of '.$summary['tetanus']['target'], 'ok' => $summary['tetanus']['is_complete']],
+                ];
+            @endphp
+            @foreach($tiles as $tile)
+                <div class="p-4 rounded-2xl border {{ $tile['ok'] ? 'bg-emerald-50 border-emerald-100' : 'bg-amber-50 border-amber-100' }}">
+                    <div class="text-xs font-bold uppercase tracking-wider {{ $tile['ok'] ? 'text-emerald-600' : 'text-amber-600' }}">{{ $tile['label'] }}</div>
+                    <div class="text-lg font-bold text-slate-900 mt-1">{{ $tile['value'] }}</div>
+                </div>
+            @endforeach
+        </div>
+
+        @if($summary['outstanding_profile'] !== [])
+            <div class="mt-4 p-4 rounded-2xl bg-amber-50 border border-amber-100">
+                <div class="text-xs font-bold text-amber-600 uppercase tracking-wider mb-1">Booking profile outstanding</div>
+                <p class="text-sm text-slate-700">{{ implode(', ', $summary['outstanding_profile']) }}</p>
+            </div>
+        @else
+            <p class="text-sm text-emerald-700 mt-4 font-medium">Booking profile complete.</p>
+        @endif
+    </div>
+
     @forelse($assessments as $assessment)
         @php $danger = $assessment->dangerSigns(); @endphp
         <div class="{{ $card }}">
@@ -69,13 +97,42 @@
             </dl>
 
             <div class="flex flex-wrap gap-2 mt-4">
-                @foreach(['tt_given' => 'Tetanus toxoid', 'iptp_given' => 'IPTp', 'itn_given' => 'Insecticide-treated net'] as $field => $title)
+                @php
+                    $badges = [
+                        ['label' => 'IPTp-SP', 'given' => $assessment->iptp_dose_number !== null, 'dose' => $assessment->iptp_dose_number],
+                        ['label' => 'Tetanus toxoid', 'given' => $assessment->tt_dose_number !== null, 'dose' => $assessment->tt_dose_number],
+                        ['label' => 'Iron &amp; folic acid', 'given' => $assessment->ifa_given, 'dose' => null],
+                        ['label' => 'Deworming', 'given' => $assessment->deworming_given, 'dose' => null],
+                        ['label' => 'Insecticide-treated net', 'given' => $assessment->itn_given, 'dose' => null],
+                    ];
+                @endphp
+                @foreach($badges as $badge)
                     <span class="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-full border
-                        {{ $assessment->{$field} ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-200' }}">
-                        {{ $title }} {{ $assessment->{$field} ? 'given' : 'not given' }}
+                        {{ $badge['given'] ? 'bg-emerald-50 text-emerald-700 border-emerald-100' : 'bg-slate-50 text-slate-400 border-slate-200' }}">
+                        {!! $badge['label'] !!}
+                        @if($badge['given'])
+                            {{ $badge['dose'] !== null ? 'dose '.$badge['dose'] : 'given' }}
+                        @else
+                            not given
+                        @endif
                     </span>
                 @endforeach
             </div>
+
+            @if($assessment->gravida !== null || $assessment->blood_group || $assessment->hiv_status)
+                <dl class="grid grid-cols-2 sm:grid-cols-4 gap-4 text-sm mt-4 pt-4 border-t border-slate-100">
+                    @if($assessment->gravida !== null)
+                        <div><dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">Gravida / Para</dt>
+                            <dd class="font-medium text-slate-900">G{{ $assessment->gravida }} P{{ $assessment->para ?? '—' }}</dd></div>
+                    @endif
+                    @foreach(['blood_group' => 'Blood group', 'rhesus' => 'Rhesus', 'sickling_status' => 'Sickling', 'hiv_status' => 'HIV', 'syphilis_status' => 'Syphilis', 'hepatitis_b_status' => 'Hepatitis B'] as $field => $title)
+                        @if($assessment->{$field})
+                            <div><dt class="text-xs font-bold text-slate-400 uppercase tracking-wider">{{ $title }}</dt>
+                                <dd class="font-medium text-slate-900">{{ ucfirst(str_replace('_', ' ', $assessment->{$field})) }}</dd></div>
+                        @endif
+                    @endforeach
+                </dl>
+            @endif
 
             @if($assessment->notes)
                 <p class="text-sm text-slate-600 mt-4 whitespace-pre-line">{{ $assessment->notes }}</p>

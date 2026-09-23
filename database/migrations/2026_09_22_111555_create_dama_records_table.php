@@ -7,9 +7,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Discharge Against Medical Advice. The clinical and legal record of what
-     * the patient was told and who witnessed it, kept separately from the
-     * visit outcome because it has to stand on its own.
+     * Discharge Against Medical Advice: the record of what the patient was told
+     * and who witnessed it, kept separately because it has to stand on its own.
      */
     public function up(): void
     {

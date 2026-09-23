@@ -7,9 +7,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Death in care. Cause of death follows the certificate structure
-     * (immediate cause, underlying cause, contributing factors) so the record
-     * can support statutory notification.
+     * Death in care. Cause follows the certificate structure so the record can
+     * support statutory notification.
      */
     public function up(): void
     {
@@ -22,7 +21,7 @@ return new class extends Migration
             $table->string('immediate_cause');
             $table->string('underlying_cause')->nullable();
             $table->text('contributing_factors')->nullable();
-            $table->string('manner')->default('natural');   // natural, accident, suicide, homicide, undetermined
+            $table->string('manner')->default('natural');
             $table->boolean('referred_to_coroner')->default(false);
             $table->boolean('autopsy_requested')->default(false);
             $table->string('certificate_number')->nullable();

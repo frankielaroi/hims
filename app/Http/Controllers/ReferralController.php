@@ -6,6 +6,7 @@ use App\Models\AuditLog;
 use App\Models\Referral;
 use App\Models\Visit;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class ReferralController extends Controller
 {
@@ -115,6 +116,44 @@ class ReferralController extends Controller
         ]);
 
         return back()->with('success', 'Referral marked as completed.');
+    }
+
+    /**
+     * Record the first doses given before the patient travels.
+     *
+     * The receiving facility needs to know what was already given and when, or
+     * the patient is double-dosed on arrival or left untreated for the journey.
+     */
+    public function recordPreReferralTreatment(Request $request, Referral $referral)
+    {
+        $validated = $request->validate([
+            'pre_referral_treatments' => 'required|array|min:1',
+            'pre_referral_treatments.*' => [Rule::in(array_keys(Referral::PRE_REFERRAL_TREATMENTS))],
+            'pre_referral_notes' => 'nullable|string',
+            'pre_referral_given_at' => 'nullable|date|before_or_equal:now',
+        ]);
+
+        $referral->update([
+            'pre_referral_treatments' => array_values($validated['pre_referral_treatments']),
+            'pre_referral_notes' => $validated['pre_referral_notes'] ?? null,
+            'pre_referral_given_at' => $validated['pre_referral_given_at'] ?? now(),
+            'pre_referral_given_by' => auth()->id(),
+        ]);
+
+        AuditLog::create([
+            'user_id' => auth()->id(),
+            'action' => 'pre_referral_treatment_recorded',
+            'description' => "Pre-referral treatment recorded for referral #{$referral->id}.",
+            'ip_address' => $request->ip(),
+            'user_agent' => $request->userAgent(),
+            'metadata' => [
+                'referral_id' => $referral->id,
+                'visit_id' => $referral->visit_id,
+                'treatments' => $referral->pre_referral_treatments,
+            ],
+        ]);
+
+        return back()->with('success', 'Pre-referral treatment recorded. It will print on the referral letter.');
     }
 
     public function print(Referral $referral)

@@ -7,8 +7,8 @@ use Illuminate\Support\Facades\Schema;
 return new class extends Migration
 {
     /**
-     * Doses actually given. What is still due is worked out by comparing these
-     * against the schedule, rather than being stored and kept in step by hand.
+     * Doses actually given. What is still due is worked out against the
+     * schedule rather than stored and kept in step by hand.
      */
     public function up(): void
     {

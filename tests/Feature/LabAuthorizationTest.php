@@ -244,6 +244,26 @@ class LabAuthorizationTest extends TestCase
         $this->assertSame($colleague->id, $order->items()->first()->authorized_by);
     }
 
+    public function test_an_assistant_is_not_shown_the_authorize_control()
+    {
+        $order = $this->orderAwaitingAuthorization();
+
+        $this->actingAs($this->assistant)
+            ->get("/lab/{$order->id}")
+            ->assertOk()
+            ->assertDontSee('Authorize Results');
+    }
+
+    public function test_a_scientist_is_shown_the_authorize_control()
+    {
+        $order = $this->orderAwaitingAuthorization();
+
+        $this->actingAs($this->scientist)
+            ->get("/lab/{$order->id}")
+            ->assertOk()
+            ->assertSee('Authorize Results');
+    }
+
     public function test_the_second_person_rule_is_off_by_default()
     {
         $order = $this->orderAwaitingAuthorization($this->scientist);

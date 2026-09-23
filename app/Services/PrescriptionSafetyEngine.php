@@ -6,16 +6,18 @@ use App\Models\Consultation;
 use App\Models\Drug;
 use App\Models\DrugInteraction;
 use App\Models\Patient;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 
 /**
  * Clinical decision support for a whole prescription.
  *
- * Composes four checks into one list of findings:
+ * Composes five checks into one list of findings:
  *  - allergy       (delegated to AllergyEngine)
  *  - interaction   (drug-drug and class-class pairs)
  *  - dose          (daily and single limits, weight-based for children)
  *  - organ         (renal and hepatic clearance against recorded impairment)
+ *  - pregnancy     (pregnancy category by trimester, and lactation)
  *
  * Every finding carries `requires_justification`. The engine never silently
  * blocks: it says what is wrong and whether the clinician has to write down why
@@ -43,6 +45,48 @@ class PrescriptionSafetyEngine
      */
     protected const EGFR_IMPAIRMENT_THRESHOLD = 30.0;
 
+    /**
+     * The vocabulary `drugs.pregnancy_category` is written in. These say what to
+     * do rather than carrying a letter grade: the FDA A/B/C/D/X letters were
+     * retired in 2015 precisely because clinicians read them as a safety
+     * ranking, and Ghana's Standard Treatment Guidelines are written as advice.
+     */
+    public const PREGNANCY_SAFE = 'safe';
+
+    public const PREGNANCY_CAUTION = 'caution';
+
+    public const PREGNANCY_AVOID_FIRST = 'avoid_first_trimester';
+
+    public const PREGNANCY_AVOID_THIRD = 'avoid_third_trimester';
+
+    public const PREGNANCY_CONTRAINDICATED = 'contraindicated';
+
+    /**
+     * @var list<string>
+     */
+    public const PREGNANCY_CATEGORIES = [
+        self::PREGNANCY_SAFE,
+        self::PREGNANCY_CAUTION,
+        self::PREGNANCY_AVOID_FIRST,
+        self::PREGNANCY_AVOID_THIRD,
+        self::PREGNANCY_CONTRAINDICATED,
+    ];
+
+    public const LACTATION_SAFE = 'safe';
+
+    public const LACTATION_CAUTION = 'caution';
+
+    public const LACTATION_AVOID = 'avoid';
+
+    /**
+     * @var list<string>
+     */
+    public const LACTATION_CATEGORIES = [
+        self::LACTATION_SAFE,
+        self::LACTATION_CAUTION,
+        self::LACTATION_AVOID,
+    ];
+
     public function __construct(protected AllergyEngine $allergyEngine) {}
 
     /**
@@ -64,6 +108,7 @@ class PrescriptionSafetyEngine
             $this->interactionFindings($drugs),
             $this->doseFindings($items, $drugs, $patient, $consultation),
             $this->organFunctionFindings($drugs, $consultation),
+            $this->pregnancyFindings($drugs, $consultation),
         );
     }
 
@@ -329,6 +374,163 @@ class PrescriptionSafetyEngine
     }
 
     /**
+     * Pregnancy and lactation, against the category recorded on the drug.
+     *
+     * A drug with no category recorded is deliberately not checked rather than
+     * wrongly flagged — the same rule the dose checks follow. Where a category
+     * names a trimester but no gestational age has been recorded, the finding
+     * still shows as a warning: a missing date is not evidence of safety.
+     *
+     * @param  Collection<int, Drug>  $drugs
+     * @return list<array<string, mixed>>
+     */
+    protected function pregnancyFindings(Collection $drugs, ?Consultation $consultation): array
+    {
+        if ($consultation === null) {
+            return [];
+        }
+
+        $isPregnant = strtolower((string) $consultation->pregnancy_status) === 'pregnant';
+        $isBreastfeeding = strtolower((string) $consultation->lactation_status) === 'breastfeeding';
+
+        if (! $isPregnant && ! $isBreastfeeding) {
+            return [];
+        }
+
+        $trimester = $isPregnant ? $this->trimester($consultation) : null;
+        $findings = [];
+
+        foreach ($drugs as $drug) {
+            if ($isPregnant) {
+                $finding = $this->pregnancyFinding($drug, $trimester);
+
+                if ($finding !== null) {
+                    $findings[] = $finding;
+                }
+            }
+
+            if ($isBreastfeeding) {
+                $finding = $this->lactationFinding($drug);
+
+                if ($finding !== null) {
+                    $findings[] = $finding;
+                }
+            }
+        }
+
+        return $findings;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function pregnancyFinding(Drug $drug, ?int $trimester): ?array
+    {
+        $category = strtolower(trim((string) $drug->pregnancy_category));
+
+        if ($category === '' || $category === self::PREGNANCY_SAFE) {
+            return null;
+        }
+
+        $namedTrimester = match ($category) {
+            self::PREGNANCY_AVOID_FIRST => 1,
+            self::PREGNANCY_AVOID_THIRD => 3,
+            default => null,
+        };
+
+        // Contraindicated binds throughout. A trimester-specific warning only
+        // blocks inside its own trimester, and stays advisory when the
+        // gestational age is unknown rather than guessing either way.
+        $blocking = match (true) {
+            $category === self::PREGNANCY_CONTRAINDICATED => true,
+            $namedTrimester !== null => $trimester === $namedTrimester,
+            default => false,
+        };
+
+        $detail = $drug->pregnancy_guidance ?: 'Check this drug against the Standard Treatment Guidelines before prescribing in pregnancy.';
+
+        if ($namedTrimester !== null && $trimester === null) {
+            $detail .= ' No gestational age or LMP is recorded for this encounter, so the trimester could not be confirmed.';
+        }
+
+        return [
+            'category' => 'pregnancy',
+            'severity' => $blocking ? 'major' : 'moderate',
+            'drug_id' => $drug->id,
+            'drug_name' => $drug->name,
+            'title' => $this->pregnancyTitle($drug, $category, $trimester),
+            'detail' => $detail,
+            'requires_justification' => $blocking,
+            'key' => 'pregnancy:'.$drug->id,
+        ];
+    }
+
+    protected function pregnancyTitle(Drug $drug, string $category, ?int $trimester): string
+    {
+        $where = $trimester !== null ? sprintf(' (currently trimester %d)', $trimester) : '';
+
+        return match ($category) {
+            self::PREGNANCY_CONTRAINDICATED => $drug->name.' is contraindicated in pregnancy'.$where,
+            self::PREGNANCY_AVOID_FIRST => $drug->name.' should be avoided in the first trimester'.$where,
+            self::PREGNANCY_AVOID_THIRD => $drug->name.' should be avoided in the third trimester'.$where,
+            default => $drug->name.' needs caution in pregnancy'.$where,
+        };
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function lactationFinding(Drug $drug): ?array
+    {
+        $category = strtolower(trim((string) $drug->lactation_category));
+
+        if ($category === '' || $category === self::LACTATION_SAFE) {
+            return null;
+        }
+
+        $blocking = $category === self::LACTATION_AVOID;
+
+        return [
+            'category' => 'pregnancy',
+            'severity' => $blocking ? 'major' : 'moderate',
+            'drug_id' => $drug->id,
+            'drug_name' => $drug->name,
+            'title' => $blocking
+                ? $drug->name.' should be avoided while breastfeeding'
+                : $drug->name.' needs caution while breastfeeding',
+            'detail' => $drug->lactation_guidance ?: 'Check infant exposure against the Standard Treatment Guidelines.',
+            'requires_justification' => $blocking,
+            'key' => 'lactation:'.$drug->id,
+        ];
+    }
+
+    /**
+     * Which trimester this encounter falls in, from the LMP where one is
+     * recorded, otherwise from a gestational age written as a number of weeks.
+     * Returns null when neither is available — the caller must not assume.
+     */
+    protected function trimester(Consultation $consultation): ?int
+    {
+        $weeks = null;
+
+        if ($consultation->lmp !== null) {
+            $weeks = Carbon::parse($consultation->lmp)->diffInWeeks(Carbon::now());
+        } elseif (preg_match('/\d+/', (string) $consultation->gestational_age, $matches) === 1) {
+            $weeks = (int) $matches[0];
+        }
+
+        if ($weeks === null || $weeks < 0 || $weeks > 45) {
+            return null;
+        }
+
+        return match (true) {
+            $weeks < 14 => 1,
+            $weeks < 28 => 2,
+            default => 3,
+        };
+    }
+
+    /**
      * Renal impairment as a grade, falling back to eGFR where no grade was set.
      */
     protected function renalGrade(Consultation $consultation): ?string
@@ -361,8 +563,11 @@ class PrescriptionSafetyEngine
 
     /**
      * Translate a frequency abbreviation into doses per day.
+     *
+     * Public because the prescribing form derives its "Auto" dispensing
+     * quantity from the same table; a second copy of it would drift.
      */
-    protected function dosesPerDay(?string $frequency): ?int
+    public function dosesPerDay(?string $frequency): ?int
     {
         $normalised = strtolower(trim((string) $frequency));
 

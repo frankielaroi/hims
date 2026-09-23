@@ -24,10 +24,12 @@ use App\Models\Service;
 use App\Models\Visit;
 use App\Models\VisitOutcome;
 use App\Services\AllergyEngine;
+use App\Services\MaternalDeathSurveillance;
 use App\Services\PrescriptionSafetyEngine;
 use Illuminate\Database\Eloquent\Collection as EloquentCollection;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -340,6 +342,8 @@ class ConsultationController extends Controller
     {
         $isDraft = $request->has('save_as_draft');
 
+        $this->withDerivedQuantities($request);
+
         $validated = $request->validate($this->rules($isDraft));
 
         $consultation = $visit->consultations()->latest('id')->first();
@@ -363,7 +367,11 @@ class ConsultationController extends Controller
 
         $chronicMedications = $this->resolveChronicMedications($visit, $prescriptionItems);
         $conflicts = $this->allergyConflicts($visit, $prescriptionItems);
-        $findings = $this->safetyEngine->check($visit->patient, $prescriptionItems, $consultation);
+        $findings = $this->safetyEngine->check(
+            $visit->patient,
+            $prescriptionItems,
+            $this->encounterSafetyContext($consultation, $validated)
+        );
 
         if (! $isDraft) {
             $this->guardPrimaryDiagnosis($diagnoses);
@@ -583,11 +591,20 @@ class ConsultationController extends Controller
 
         $manner = $validated['death_manner'];
 
+        // Whether a death is maternal is a clinical judgement — WHO excludes
+        // accidental and incidental causes — so this only records the timing
+        // the record suggests. Classification happens under surveillance.
+        $suggestedTiming = app(MaternalDeathSurveillance::class)->suggestedTiming(
+            $visit->patient,
+            Carbon::parse($validated['death_died_at'])
+        );
+
         DeathRecord::updateOrCreate(
             ['visit_id' => $visit->id],
             [
                 'patient_id' => $visit->patient_id,
                 'died_at' => $validated['death_died_at'],
+                'maternal_death_timing' => $suggestedTiming,
                 'place_of_death' => $validated['death_place'] ?? null,
                 'immediate_cause' => $validated['death_immediate_cause'],
                 'underlying_cause' => $validated['death_underlying_cause'] ?? null,
@@ -644,6 +661,8 @@ class ConsultationController extends Controller
             'Consultation',
             (float) $service->price,
             $service->is_nhis_covered,
+            1,
+            $service->nhis_tariff !== null ? (float) $service->nhis_tariff : null,
         );
     }
 
@@ -948,6 +967,86 @@ class ConsultationController extends Controller
      * @param  array<int, array<string, mixed>>  $items
      * @return array<int, array<string, mixed>>
      */
+    /**
+     * Fields on the consultation that the safety checks read.
+     *
+     * @var list<string>
+     */
+    private const ENCOUNTER_SAFETY_FIELDS = [
+        'pregnancy_status',
+        'lmp',
+        'edd',
+        'gestational_age',
+        'lactation_status',
+        'renal_impairment',
+        'hepatic_impairment',
+        'egfr',
+        'weight_kg',
+    ];
+
+    /**
+     * The clinical picture the safety checks must run against: what the
+     * clinician has just entered, not what was on file before this submission.
+     *
+     * The organ, paediatric-dose and pregnancy checks all read these fields,
+     * and they are not written to the database until the transaction further
+     * down. Checking the stored row therefore tested the previous encounter —
+     * or, on the first save of a consultation, nothing at all. The instance is
+     * a detached copy so nothing here is accidentally persisted.
+     *
+     * @param  array<string, mixed>  $validated
+     */
+    protected function encounterSafetyContext(?Consultation $consultation, array $validated): Consultation
+    {
+        $context = $consultation ? clone $consultation : new Consultation;
+
+        foreach (self::ENCOUNTER_SAFETY_FIELDS as $field) {
+            if (($validated[$field] ?? null) !== null) {
+                $context->{$field} = $validated[$field];
+            }
+        }
+
+        return $context;
+    }
+
+    /**
+     * Fill in the dispensing quantity the prescribing form leaves as "Auto".
+     *
+     * A course is doses-per-day times days — TDS for 7 days is 21 units, the
+     * worked example the prescription_items migration was written around. The
+     * frequency table is the engine's, so the two cannot drift apart.
+     *
+     * Where the frequency is not one the engine recognises, or no duration has
+     * been given, there is nothing safe to infer: the row is left alone and
+     * validation asks the clinician for a number rather than guessing at a
+     * quantity of medicine.
+     */
+    protected function withDerivedQuantities(Request $request): void
+    {
+        $items = $request->input('prescription_items');
+
+        if (! is_array($items)) {
+            return;
+        }
+
+        foreach ($items as $index => $item) {
+            if (! is_array($item) || filled($item['quantity'] ?? null)) {
+                continue;
+            }
+
+            $dosesPerDay = $this->safetyEngine->dosesPerDay($item['frequency'] ?? null);
+            $duration = (int) ($item['duration'] ?? 0);
+
+            if ($dosesPerDay === null || $duration < 1) {
+                continue;
+            }
+
+            $items[$index]['quantity'] = $dosesPerDay * $duration;
+        }
+
+        $request->merge(['prescription_items' => $items]);
+    }
+
     protected function storablePrescriptionItems(array $items, bool $isDraft): array
     {
         if (! $isDraft) {

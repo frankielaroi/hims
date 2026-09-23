@@ -8,6 +8,7 @@ use App\Models\RadiologyAttachment;
 use App\Models\RadiologyOrder;
 use App\Models\Service;
 use App\Models\Visit;
+use App\Services\PrescriptionSafetyEngine;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -65,7 +66,21 @@ class RadiologyController extends Controller
             'clinical_indication' => 'required|string',
             'priority' => ['required', Rule::in(RadiologyOrder::PRIORITIES)],
             'contrast_required' => 'nullable|boolean',
+            'pregnancy_justification' => 'nullable|string',
         ]);
+
+        // Radiation safety: a pregnant woman is not irradiated without a
+        // written reason. Ultrasound and MRI are exempt because they carry no
+        // fetal dose. A warning with a gate, not a hard stop — imaging is
+        // sometimes exactly what a pregnant patient needs.
+        if ($this->irradiatesAPregnancy($visit, $validated['modality'])
+            && ! $this->safetyEngineJustified($validated['pregnancy_justification'] ?? null)) {
+            return back()->withInput()->withErrors([
+                'pregnancy_justification' => 'This patient is recorded as pregnant and '
+                    .strtoupper($validated['modality'])
+                    .' uses ionising radiation. Record why the study is needed, or use ultrasound or MRI instead.',
+            ]);
+        }
 
         $order = DB::transaction(function () use ($validated, $visit, $request) {
             $order = RadiologyOrder::create([
@@ -305,7 +320,33 @@ class RadiologyController extends Controller
             'Radiology',
             (float) $service->price,
             $service->is_nhis_covered,
+            1,
+            $service->nhis_tariff !== null ? (float) $service->nhis_tariff : null,
         );
+    }
+
+    /**
+     * Whether this request would irradiate a pregnancy.
+     *
+     * Reads the pregnancy status recorded at this encounter. Where no status
+     * has been recorded the study is allowed: a blank field is not a positive
+     * pregnancy test, and blocking every unrecorded case would stop the gate
+     * being taken seriously.
+     */
+    protected function irradiatesAPregnancy(Visit $visit, string $modality): bool
+    {
+        if (! in_array($modality, RadiologyOrder::IONISING_MODALITIES, true)) {
+            return false;
+        }
+
+        $status = $visit->consultations()->latest('id')->value('pregnancy_status');
+
+        return strtolower((string) $status) === 'pregnant';
+    }
+
+    protected function safetyEngineJustified(?string $justification): bool
+    {
+        return mb_strlen(trim((string) $justification)) >= PrescriptionSafetyEngine::JUSTIFICATION_MIN_LENGTH;
     }
 
     protected function authorizeRadiology(): void

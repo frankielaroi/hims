@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Patient;
+use App\Models\Permission;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,6 +17,15 @@ class PatientIdentityTest extends TestCase
     {
         parent::setUp();
         $this->adminRole = Role::create(['name' => 'Admin', 'slug' => 'admin']);
+
+        // The role needs the permissions the controller actually checks, or
+        // every request 403s before reaching the behaviour under test.
+        $this->adminRole->permissions()->sync(
+            collect(['register_patients', 'view_patients', 'edit_patient_identity', 'merge_patients', 'view_clinical_history'])
+                ->map(fn (string $slug) => Permission::updateOrCreate(['slug' => $slug], ['name' => $slug])->id)
+                ->all()
+        );
+
         $this->admin = User::factory()->create();
         $this->admin->roles()->attach($this->adminRole);
     }

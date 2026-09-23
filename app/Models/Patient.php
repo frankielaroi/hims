@@ -12,7 +12,11 @@ class Patient extends Model
 
     protected $fillable = [
         'hospital_id',
+        'ghana_card_pin',
         'full_name',
+        'occupation',
+        'religion',
+        'marital_status',
         'is_unidentified',
         'date_of_birth',
         'estimated_age',
@@ -57,6 +61,11 @@ class Patient extends Model
     public function activeChronicMedications()
     {
         return $this->hasMany(PatientChronicMedication::class)->where('is_active', true);
+    }
+
+    public function imciAssessments()
+    {
+        return $this->hasMany(ImciAssessment::class);
     }
 
     public function growthMeasurements()

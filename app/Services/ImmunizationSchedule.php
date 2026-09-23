@@ -42,10 +42,27 @@ class ImmunizationSchedule
         ['code' => 'PCV', 'name' => 'Pneumococcal Conjugate', 'dose' => 3, 'age_weeks' => 14],
         ['code' => 'IPV', 'name' => 'Inactivated Polio Vaccine', 'dose' => 1, 'age_weeks' => 14],
 
+        // Malaria vaccine, given routinely in Ghana. The first three doses fall
+        // at 6, 7 and 9 months with the fourth at 18 months.
+        ['code' => 'MAL', 'name' => 'Malaria Vaccine (R21/RTS,S)', 'dose' => 1, 'age_weeks' => 26],
+        ['code' => 'MAL', 'name' => 'Malaria Vaccine (R21/RTS,S)', 'dose' => 2, 'age_weeks' => 30],
+
+        // Vitamin A from six months, then every six months to five years. It is
+        // a supplement rather than a vaccine, but it is given at the same child
+        // welfare contacts and is counted in the same returns.
+        ['code' => 'VITA', 'name' => 'Vitamin A supplementation', 'dose' => 1, 'age_weeks' => 26],
+
         ['code' => 'MR', 'name' => 'Measles-Rubella', 'dose' => 1, 'age_weeks' => 39],
         ['code' => 'YF', 'name' => 'Yellow Fever', 'dose' => 1, 'age_weeks' => 39],
+        ['code' => 'MAL', 'name' => 'Malaria Vaccine (R21/RTS,S)', 'dose' => 3, 'age_weeks' => 39],
+        ['code' => 'VITA', 'name' => 'Vitamin A supplementation', 'dose' => 2, 'age_weeks' => 52],
+
         ['code' => 'MENA', 'name' => 'Meningococcal A', 'dose' => 1, 'age_weeks' => 78],
         ['code' => 'MR', 'name' => 'Measles-Rubella', 'dose' => 2, 'age_weeks' => 78],
+        ['code' => 'MAL', 'name' => 'Malaria Vaccine (R21/RTS,S)', 'dose' => 4, 'age_weeks' => 78],
+        ['code' => 'VITA', 'name' => 'Vitamin A supplementation', 'dose' => 3, 'age_weeks' => 78],
+        ['code' => 'VITA', 'name' => 'Vitamin A supplementation', 'dose' => 4, 'age_weeks' => 104],
+        ['code' => 'VITA', 'name' => 'Vitamin A supplementation', 'dose' => 5, 'age_weeks' => 130],
     ];
 
     /**
